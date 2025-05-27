@@ -1,0 +1,224 @@
+
+services:
+  jellyfin:
+    image: linuxserver/jellyfin
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - jellyfin_config:/config
+      - ${STORAGE_RADARR}:/media-radarr
+      - ${STORAGE_SONARR}:/media-sonarr
+    expose:
+      - "8096"
+    labels:
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)"
+      - "traefik.http.routers.jellyfin.entrypoints=web"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    depends_on:
+      - radarr
+      - sonarr
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - qbittorrent_config:/config
+      - ${STORAGE_RADARR}:/downloads-radarr
+      - ${STORAGE_SONARR}:/downloads-sonarr
+    expose:
+      - "8080"
+    labels:
+      - "traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.${DOMAIN}`)"
+      - "traefik.http.routers.qbittorrent.entrypoints=web"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  radarr:
+    image: linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - radarr_config:/config
+      - ${STORAGE_RADARR}:/media-radarr
+    expose:
+      - "7878"
+    labels:
+      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
+      - "traefik.http.routers.radarr.entrypoints=web"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    depends_on:
+      - qbittorrent
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  sonarr:
+    image: linuxserver/sonarr
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - sonarr_config:/config
+      - ${STORAGE_SONARR}:/media-sonarr
+    expose:
+      - "8989"
+    labels:
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
+      - "traefik.http.routers.sonarr.entrypoints=web"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    depends_on:
+      - qbittorrent
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  heimdall:
+    image: linuxserver/heimdall
+    container_name: heimdall
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - heimdall_config:/config
+    expose:
+      - "80"
+    labels:
+      - "traefik.http.routers.heimdall.rule=Host(`heimdall.${DOMAIN}`)"
+      - "traefik.http.routers.heimdall.entrypoints=web"
+      - "traefik.http.services.heimdall.loadbalancer.server.port=80"
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    depends_on:
+      - qbittorrent
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prowlarr:
+    image: linuxserver/prowlarr
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - prowlarr_config:/config
+    expose:
+      - "9696"
+    labels:
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DOMAIN}`)"
+      - "traefik.http.routers.prowlarr.entrypoints=web"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  traefik:
+    image: traefik:v3.4
+    container_name: traefik
+    command:
+      - "--providers.docker=true"
+      - "--api.dashboard=true"
+      - "--api.debug=true"
+      - "--entrypoints.web.address=:${PORT_USED}"
+    ports:
+      - "${PORT_USED}:${PORT_USED}"
+    labels:
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${USER_TRAEFIK}:${PASS_TRAEFIK}"
+      - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - traefik_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  whoami:
+    image: traefik/whoami
+    container_name: whoami-traefik
+    restart: unless-stopped
+    labels:
+      - "traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN}`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+    networks:
+      - traefik_net
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=${TZ}
+      - WATCHTOWER_POLL_INTERVAL=21600
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_NO_STARTUP_MESSAGE=true
+    command: --debug
+    restart: unless-stopped
+    networks:
+      - traefik_net
+
+volumes:
+  jellyfin_config:
+  radarr_config:
+  sonarr_config:
+  prowlarr_config:
+  qbittorrent_config:
+  heimdall_config:
+
+networks:
+  traefik_net:
+    driver: bridge

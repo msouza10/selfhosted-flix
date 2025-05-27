@@ -1,0 +1,18 @@
+Fonte: Tubular
+
+  O~~ ~~             O~~    O~~                           O~~            
+O~~    O~~           O~~  O~   O~~                        O~~            
+ O~~         O~~     O~~O~O~ O~O~~        O~~     O~~~~ O~O~ O~   O~~    
+   O~~     O~   O~~  O~~  O~~  O~ O~    O~~  O~~ O~~      O~~   O~   O~~ 
+      O~~ O~~~~~ O~~ O~~  O~~  O~~  O~~O~~    O~~  O~~~   O~~  O~~~~~ O~~
+O~~    O~~O~         O~~  O~~  O~   O~~ O~~  O~~     O~~  O~~  O~        
+  O~~ ~~    O~~~~   O~~~  O~~  O~~  O~~   O~~    O~~ O~~   O~~   O~~~~   
+                                                                         
+     O~~      O~~~~~~~~ O~~            
+     O~~      O~~       O~~ O~         
+     O~~      O~~       O~~   O~~   O~~
+ O~~ O~~O~~~~~O~~~~~~   O~~O~~  O~ O~~ 
+O~   O~~      O~~       O~~O~~   O~    
+O~   O~~      O~~       O~~O~~ O~  O~~ 
+ O~~ O~~      O~~      O~~~O~~O~~   O~~
+                                       

@@ -1,0 +1,32 @@
+Fonte: amcaaa01
+
+  sSSs    sSSs  S.        sSSs   .S    S.     sSSs_sSSs      sSSs  
+ d%%SP   d%%SP  SS.      d%%SP  .SS    SS.   d%%SP~YS%%b    d%%SP  
+d%S'    d%S'    S%S     d%S'    S%S    S%S  d%S'     `S%b  d%S'    
+S%|     S%S     S%S     S%S     S%S    S%S  S%S       S%S  S%|     
+S&S     S&S     S&S     S&S     S%S SSSS%S  S&S       S&S  S&S     
+Y&Ss    S&S_Ss  S&S     S&S_Ss  S&S  SSS&S  S&S       S&S  Y&Ss    
+`S&&S   S&S~SP  S&S     S&S~SP  S&S    S&S  S&S       S&S  `S&&S   
+  `S*S  S&S     S&S     S&S     S&S    S&S  S&S       S&S    `S*S  
+   l*S  S*b     S*b     S*b     S*S    S*S  S*b       d*S     l*S  
+  .S*P  S*S.    S*S.    S*S     S*S    S*S  S*S.     .S*S    .S*P  
+sSS*S    SSSbs   SSSbs  S*S     S*S    S*S   SSSbs_sdSSS   sSS*S   
+YSS'      YSSP    YSSP  S*S     SSS    S*S    YSSP~YSSY    YSS'    
+                        SP             SP                          
+                        Y              Y                           
+                                                                   
+sdSS_SSSSSSbs    sSSs   .S_sSSs      sSSs  S.       .S   .S S.   
+YSSS~S%SSSSSP   d%%SP  .SS~YS%%b    d%%SP  SS.     .SS  .SS SS.  
+     S%S       d%S'    S%S   `S%b  d%S'    S%S     S%S  S%S S%S  
+     S%S       S%S     S%S    S%S  S%S     S%S     S%S  S%S S%S  
+     S&S       S&S     S%S    S&S  S&S     S&S     S&S  S%S S%S  
+     S&S       S&S_Ss  S&S    S&S  S&S_Ss  S&S     S&S   SS SS   
+     S&S       S&S~SP  S&S    S&S  S&S~SP  S&S     S&S    S_S    
+     S&S       S&S     S&S    S&S  S&S     S&S     S&S   SS~SS   
+     S*S       S*b     S*S    d*S  S*b     S*b     S*S  S*S S*S  
+     S*S       S*S.    S*S   .S*S  S*S     S*S.    S*S  S*S S*S  
+     S*S        SSSbs  S*S_sdSSS   S*S      SSSbs  S*S  S*S S*S  
+     S*S         YSSP  SSS~YSSY    S*S       YSSP  S*S  S*S S*S  
+     SP                            SP              SP   SP       
+     Y                             Y               Y    Y        
+                                                                 
