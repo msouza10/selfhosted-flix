@@ -6,20 +6,20 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
     volumes:
       - jellyfin_config:/config
-      - ${STORAGE_RADARR}:/media-radarr
-      - ${STORAGE_SONARR}:/media-sonarr
+      - /opt/radarr-media:/media-radarr
+      - /opt/sonarr-media:/media-sonarr
     expose:
       - "8096"
     labels:
-      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)"
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.lan`)"
       - "traefik.http.routers.jellyfin.entrypoints=web"
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     depends_on:
       - radarr
       - sonarr
@@ -35,20 +35,20 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
     volumes:
       - qbittorrent_config:/config
-      - ${STORAGE_RADARR}:/downloads-radarr
-      - ${STORAGE_SONARR}:/downloads-sonarr
+      - /opt/radarr-media:/downloads-radarr
+      - /opt/sonarr-media:/downloads-sonarr
     expose:
       - "8080"
     labels:
-      - "traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.${DOMAIN}`)"
+      - "traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.lan`)"
       - "traefik.http.routers.qbittorrent.entrypoints=web"
       - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     logging:
       driver: "json-file"
       options:
@@ -61,19 +61,19 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
     volumes:
       - radarr_config:/config
-      - ${STORAGE_RADARR}:/media-radarr
+      - /opt/radarr-media:/media-radarr
     expose:
       - "7878"
     labels:
-      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.lan`)"
       - "traefik.http.routers.radarr.entrypoints=web"
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     depends_on:
       - qbittorrent
     logging:
@@ -88,19 +88,19 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
     volumes:
       - sonarr_config:/config
-      - ${STORAGE_SONARR}:/media-sonarr
+      - /opt/sonarr-media:/media-sonarr
     expose:
       - "8989"
     labels:
-      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.lan`)"
       - "traefik.http.routers.sonarr.entrypoints=web"
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     depends_on:
       - qbittorrent
     logging:
@@ -115,18 +115,18 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
     volumes:
       - heimdall_config:/config
     expose:
       - "80"
     labels:
-      - "traefik.http.routers.heimdall.rule=Host(`heimdall.${DOMAIN}`)"
+      - "traefik.http.routers.heimdall.rule=Host(`heimdall.lan`)"
       - "traefik.http.routers.heimdall.entrypoints=web"
       - "traefik.http.services.heimdall.loadbalancer.server.port=80"
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     depends_on:
       - qbittorrent
     logging:
@@ -141,18 +141,18 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
     volumes:
       - prowlarr_config:/config
     expose:
       - "9696"
     labels:
-      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DOMAIN}`)"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.lan`)"
       - "traefik.http.routers.prowlarr.entrypoints=web"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     logging:
       driver: "json-file"
       options:
@@ -166,20 +166,22 @@ services:
       - "--providers.docker=true"
       - "--api.dashboard=true"
       - "--api.debug=true"
-      - "--entrypoints.web.address=:${PORT_USED}"
+      - "--entrypoints.web.address=:80"
+    # - "--entrypoints.websecure.address=:443"
     ports:
-      - "${PORT_USED}:${PORT_USED}"
+      - "80:80"
+    #      - "443:443"
     labels:
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.lan`)"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
       - "traefik.http.routers.traefik-dashboard.entrypoints=web"
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${USER_TRAEFIK}:${PASS_TRAEFIK}"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=msouza:$2y$05$5Daq/2yzz.Q1mQJw76FCEudraC7/Ppx9pCdt4Y4w9u904qhp2krkW" # senha 1234
       - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
     logging:
       driver: "json-file"
       options:
@@ -191,10 +193,10 @@ services:
     container_name: whoami-traefik
     restart: unless-stopped
     labels:
-      - "traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN}`)"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.lan`)"
       - "traefik.http.routers.whoami.entrypoints=web"
     networks:
-      - traefik_net
+      - media
 
   watchtower:
     image: containrrr/watchtower
@@ -202,14 +204,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - TZ=${TZ}
+      - TZ=America/Sao_Paulo
       - WATCHTOWER_POLL_INTERVAL=21600
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_NO_STARTUP_MESSAGE=true
     command: --debug
     restart: unless-stopped
     networks:
-      - traefik_net
+      - media
 
 volumes:
   jellyfin_config:
@@ -220,5 +222,5 @@ volumes:
   heimdall_config:
 
 networks:
-  traefik_net:
+  media:
     driver: bridge
