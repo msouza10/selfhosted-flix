@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
-info "Iniciando configuração do heimdall..."
+print "Iniciando setup do heimdall..."
 
+sleep 1
+print "3..."
+sleep 1
+print "2..."
+sleep 1
+print "1..."
 sleep 1
 
 info "buildando imagem do heimdall..."

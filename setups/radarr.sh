@@ -15,9 +15,11 @@ war "Criando backup do arquivo de configuracao do radarr..."
 if [[ -f "$radarr_path/$data_path/config.xml" ]]; then
     print "Backup do arquivo de configuracao do radarr encontrado: $radarr_path/$data_path/config.xml"
     ask "Deseja sobrescrever o backup? [s/N]: "
+    sed -i 's/radarr_api/'$radarr_api'/g' configs/config.xml
     if [[ "$input" =~ ^[sS]$ ]]; then
         print "Sobrescrevendo backup do arquivo de configuracao do radarr..."
         cp "$radarr_path/$data_path/config.xml" "$backup_dir/radarr/config.xml"
+        sed -i 's/radarr_api/'$radarr_api'/g' configs/config.xml
     else
         print "Backup do arquivo de configuracao do radarr não sobrescrito!"
     fi

@@ -15,9 +15,11 @@ war "Criando backup do arquivo de configuracao do sonarr..."
 if [[ -f "$sonarr_path/$data_path/config.xml" ]]; then
     print "Backup do arquivo de configuracao do sonarr encontrado: $sonarr_path/$data_path/config.xml"
     ask "Deseja sobrescrever o backup? [s/N]: "
+    sed -i 's/sonarr_user/'$sonarr_user'/g' configs/config.xml
     if [[ "$input" =~ ^[sS]$ ]]; then
         print "Sobrescrevendo backup do arquivo de configuracao do sonarr..."
         cp "$sonarr_path/$data_path/config.xml" "$backup_dir/sonarr/config.xml"
+        sed -i 's/sonarr_user/'$sonarr_user'/g' configs/config.xml
     else
         print "Backup do arquivo de configuracao do sonarr não sobrescrito!"
     fi

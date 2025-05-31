@@ -571,7 +571,7 @@ if [[ "$input" =~ ^[sS]$ ]]; then
     source setups/qbittorrent.sh
     source setups/radarr.sh
     source setups/sonarr.sh
-    source setups/traefik.sh
+    source setups/prowlarr.sh
 else
     log "os serviços foram iniciados com sucesso e estão em execução."
     war "o qbittorrent criara uma senha randomica, para ter acesso a ela veja nos logs com co comando 'docker logs qbittorrent' ou anota a senha abaixo"
