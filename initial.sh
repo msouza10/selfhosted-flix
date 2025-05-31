@@ -5,7 +5,7 @@ set -euo pipefail
 # variables general
 BANNER_DIR="banners/ascii_fonts"
 SERVICES_HOSTS="traefik radarr sonarr jellyfin qbittorrent dnsmasq heimdall"
-REQUIREMENTS="docker htpasswd ping mkdir cp awk sed shuf grep timedatectl python3"
+REQUIREMENTS="docker htpasswd ping mkdir cp awk sed shuf grep timedatectl python3 sqlite3"
 DOCKER_ROOT_DIR="$(docker info | grep "Docker Root Dir" | awk '{print $4}')"
 
 # variables for env
@@ -546,8 +546,6 @@ else
   done
 fi
 
-
-
 print "\nInicialização concluída!"
 print "Para acessar os serviços, utilize os seguintes endereços (substitua "$DOMAIN" e "$PORT_USED" se necessário):"
 print "Exemplos (protocolo http:// assumido, ajuste para https:// se "$PORT_USED" for :443 e SSL estiver configurado):"
@@ -565,6 +563,9 @@ ask "Deseja configurar os ambientes? [s/N]: "
 if [[ "$input" =~ ^[sS]$ ]]; then
     war "Vamos realizar a configuração dos ambientes, pensando em deixar um ambiente pre-pronto para o uso."
     war "Porem pode ser necessario realizar algumas configurações manuais."
+    war "criando pasta com todos os backup dentro /opt/backup/"
+    $backup_dir="/opt/backup"
+    mkdir -p $backup_dir/$SERVICES_HOSTS
     source setups/args.sh
     source setups/heimdall.sh
     source setups/qbittorrent.sh

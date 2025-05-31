@@ -6,17 +6,17 @@ prowlarr_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*prowla
 heimdall_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*heimdall*")
 
 # api's of services
-sonarr_api="$(grep -v "apikey" $sonarr_path/$data_path/config.xml | sed -i 's#<apikey>\(.*\)</apikey>#\1#g')"
-radarr_api="$(grep -v "apikey" $radarr_path/$data_path/config.xml | sed -i 's#<apikey>\(.*\)</apikey>#\1#g')"
-prowlarr_api="$(grep -v "apikey" $prowlarr_path/$data_path/config.xml | sed -i 's#<apikey>\(.*\)</apikey>#\1#g')"
+sonarr_api="$(sed -n 's#<apikey>\(.*\)</apikey>#\1#p' "$sonarr_path/$data_path/config.xml")"
+radarr_api="$(sed -n 's#<apikey>\(.*\)</apikey>#\1#p' "$radarr_path/$data_path/config.xml")"
+prowlarr_api="$(sed -n 's#<apikey>\(.*\)</apikey>#\1#p' "$prowlarr_path/$data_path/config.xml")"
 
 # ip's of services
-qbittorrent_ip="$('docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep traefik | head -n 1 | cut -d : -f2 | tr -d '[:space:]'')"
-sonarr_ip="$('docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep sonarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]'')"
-prowlarr_ip="$('docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep prowlarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]'')"
-radarr_ip="$('docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep radarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]'')"
-heimdall_ip="$('docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep heimdall | head -n 1 | cut -d : -f2 | tr -d '[:space:]'')"
-traefik_ip="$('docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep traefik | head -n 1 | cut -d : -f2 | tr -d '[:space:]'')"
+qbittorrent_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep traefik | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
+sonarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep sonarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
+prowlarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep prowlarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
+radarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep radarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
+heimdall_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep heimdall | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
+traefik_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep traefik | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
 
 log "Iniciando configuração dos ambientes..."
 
@@ -25,6 +25,8 @@ print "Precisamos configurar as credenciais dos ambientes, pensando em deixar um
 sleep 2
 clear
 
+
+# Configuração do qbittorrent
 print "\n=== Configuração do qbittorrent ==="
 
 print "Usuario do qbittorrent"
@@ -48,6 +50,9 @@ print "Senha do qbittorrent"
 print "1- Criar senha randomica auto-renovavel"
 print "2- Usar senha fixa (recomendado)"
 
+war "A senha não será fixa, você deve verificar a senha no log do container qbittorrent toda a vez que reinicializar."
+war "Tambem sera necessario configurar manualmente a senha no sonarr e radarr"
+
 ask "Selecione uma opção [1/2]: "
 
 if [[ "$input" =~ ^[1]$ ]]; then
@@ -56,13 +61,14 @@ if [[ "$input" =~ ^[1]$ ]]; then
 else
     ask_pass "Digite a senha para o qbittorrent: "
     print "Senha gerada: $input"
+    qbittorrent_pass_fixed="$input"
     salt_qbittorrent="$(python3 based/salt_gen.py --gensalt)"
     hash_qbittorrent="$(python3 based/salt_gen.py --hash "$input")"
     qbittorrent_user="$input:$hash_qbittorrent"
     print "Senha configurada com sucesso!"
 fi
 
-# Configuração do Sonarr
+# Configuração do sonarr
 print "\n=== Configuração do Sonarr ==="
 
 print "Usuario do Sonarr"
@@ -97,7 +103,7 @@ else
     print "Senha configurada com sucesso!"
 fi
 
-# Configuração do Radarr
+# Configuração do radarr
 print "\n=== Configuração do Radarr ==="
 
 print "Usuario do Radarr"
@@ -132,7 +138,7 @@ else
     print "Senha configurada com sucesso!"
 fi
 
-# Configuração do Prowlarr
+# Configuração do prowlarr
 print "\n=== Configuração do Prowlarr ==="
 
 print "Usuario do Prowlarr"
@@ -237,6 +243,8 @@ PROWLARR_IP="$prowlarr_ip"
 HEIMDALL_IP="$heimdall_ip"
 TRAEFIK_IP="$traefik_ip"
 EOF
+
+all_args=("$qbittorrent_user" "$qbittorrent_pass" "$qbittorrent_ip" "$sonarr_user" "$sonarr_pass" "$sonarr_ip" "$radarr_user" "$radarr_pass" "$radarr_api" "$radarr_ip" "$prowlarr_user" "$prowlarr_pass" "$prowlarr_api" "$prowlarr_ip" "$heimdall_ip" "$traefik_ip")
 
 print "Configurações salvas em: $config_file"
 print "Você pode consultar este arquivo para verificar as credenciais configuradas."

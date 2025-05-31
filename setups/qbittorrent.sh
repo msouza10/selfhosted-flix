@@ -26,9 +26,11 @@ fi
 
 if [ -z "$qbittorrent_pass" ]; then
     print "Senha default: $(docker logs qbittorrent | grep "The WebUI administrator password" | tail -n 1 | awk '{print $16}')"
-    print "Utilize ele para logar no qbittorrent, lembrando que a senha não será fixa, você deve verificar a senha no log do container qbittorrent toda a vez que reinicializar"
+    war "Utilize ele para logar no qbittorrent, lembrando que a senha não será fixa, você deve verificar a senha no log do container qbittorrent toda a vez que reinicializar."
+    war "Tambem sera necessario configurar manualmente a senha no sonarr e radarr"
 else
-    print "Senha personalizada: $qbittorrent_pass"
+    print "Senha personalizada em texto pleno: $qbittorrent_pass_fixed"
+    print "Senha personalizada em hash+salt: $qbittorrent_pass"
     echo "WebUI\Password_PBKDF2="@ByteArray($qbittorrent_pass)"" >> $qbittorrent_path/$data_path/qBittorrent.conf
     docker restart qbittorrent
     checking_qbittorrent_credentials
