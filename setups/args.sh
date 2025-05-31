@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 data_path="_data"
 sonarr_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*sonarr*")
 qbittorrent_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*qbittorrent*")
@@ -5,12 +7,12 @@ radarr_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*radarr*"
 prowlarr_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*prowlarr*")
 heimdall_path=$(find $DOCKER_ROOT_DIR/volumes -maxdepth 1 -type d -name "*heimdall*")
 
-# api's of services
+# apis of services
 sonarr_api="$(sed -n 's#<apikey>\(.*\)</apikey>#\1#p' "$sonarr_path/$data_path/config.xml")"
 radarr_api="$(sed -n 's#<apikey>\(.*\)</apikey>#\1#p' "$radarr_path/$data_path/config.xml")"
 prowlarr_api="$(sed -n 's#<apikey>\(.*\)</apikey>#\1#p' "$prowlarr_path/$data_path/config.xml")"
 
-# ip's of services
+# ips of services
 qbittorrent_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep traefik | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
 sonarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep sonarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
 prowlarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep prowlarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
@@ -26,7 +28,7 @@ sleep 2
 clear
 
 
-# Configuração do qbittorrent
+# configuration of qbittorrent
 print "\n=== Configuração do qbittorrent ==="
 
 print "Usuario do qbittorrent"
@@ -68,7 +70,7 @@ else
     print "Senha configurada com sucesso!"
 fi
 
-# Configuração do sonarr
+# configuration of sonarr
 print "\n=== Configuração do Sonarr ==="
 
 print "Usuario do Sonarr"
@@ -103,7 +105,7 @@ else
     print "Senha configurada com sucesso!"
 fi
 
-# Configuração do radarr
+# configuration of radarr
 print "\n=== Configuração do Radarr ==="
 
 print "Usuario do Radarr"
@@ -138,7 +140,7 @@ else
     print "Senha configurada com sucesso!"
 fi
 
-# Configuração do prowlarr
+# configuration of prowlarr
 print "\n=== Configuração do Prowlarr ==="
 
 print "Usuario do Prowlarr"
@@ -174,7 +176,7 @@ else
 fi
 
 
-# Resumo das configurações
+# summary of configurations
 print "\n=== Resumo das Configurações ==="
 print "qBittorrent:"
 print "  Usuario: $qbittorrent_user"
@@ -201,7 +203,7 @@ print "  IP: $prowlarr_ip"
 print "\nHeimdall IP: $heimdall_ip"
 print "Traefik IP: $traefik_ip"
 
-# Exportar variáveis para uso em outros scripts
+# exporting variables for use in other scripts
 export qbittorrent_user qbittorrent_pass qbittorrent_ip
 export sonarr_user sonarr_pass sonarr_ip
 export radarr_user radarr_pass radarr_api radarr_ip
@@ -210,7 +212,7 @@ export heimdall_ip traefik_ip
 
 log "Configuração das credenciais concluída com sucesso!"
 
-# Salvar configurações em arquivo para referência futura
+# saving config file for future reference
 config_file="services_config.env"
 mkdir -p configs
 
