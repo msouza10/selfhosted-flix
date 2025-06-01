@@ -9,8 +9,8 @@ services:
       - TZ=${TZ}
     volumes:
       - jellyfin_config:/config
-      - ${STORAGE_RADARR}:/media-radarr
-      - ${STORAGE_SONARR}:/media-sonarr
+      - ${RADARR_PATH}:/media-radarr
+      - ${SONARR_PATH}:/media-sonarr
     expose:
       - "8096"
     labels:
@@ -38,8 +38,8 @@ services:
       - TZ=${TZ}
     volumes:
       - qbittorrent_config:/config
-      - ${STORAGE_RADARR}:/downloads-radarr
-      - ${STORAGE_SONARR}:/downloads-sonarr
+      - ${RADARR_PATH}:/downloads-radarr
+      - ${SONARR_PATH}:/downloads-sonarr
     expose:
       - "8080"
     labels:
@@ -64,7 +64,7 @@ services:
       - TZ=${TZ}
     volumes:
       - radarr_config:/config
-      - ${STORAGE_RADARR}:/media-radarr
+      - ${RADARR_PATH}:/media-radarr
     expose:
       - "7878"
     labels:
@@ -91,7 +91,7 @@ services:
       - TZ=${TZ}
     volumes:
       - sonarr_config:/config
-      - ${STORAGE_SONARR}:/media-sonarr
+      - ${SONARR_PATH}:/media-sonarr
     expose:
       - "8989"
     labels:

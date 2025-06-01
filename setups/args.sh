@@ -61,7 +61,7 @@ if [[ "$input" =~ ^[1]$ ]]; then
     print "A senha não será fixa, você deve verificar a senha no log do container qbittorrent toda a vez que reinicializar"
     print "Senha gerada: $(docker logs qbittorrent | grep "The WebUI administrator password" | tail -n 1 | awk '{print $16}')"
 else
-    ask_pass "Digite a senha para o qbittorrent: "
+    ask_secret "Digite a senha para o qbittorrent: "
     print "Senha gerada: $input"
     qbittorrent_pass_fixed="$input"
     salt_qbittorrent="$(python3 based/salt_gen.py --gensalt)"

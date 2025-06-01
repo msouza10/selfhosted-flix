@@ -5,7 +5,7 @@ set -euo pipefail
 # variables general
 BANNER_DIR="banners/ascii_fonts"
 SERVICES_HOSTS="traefik radarr sonarr jellyfin qbittorrent dnsmasq heimdall"
-REQUIREMENTS="docker htpasswd ping mkdir cp awk sed shuf grep timedatectl python3 sqlite3"
+REQUIREMENTS="docker htpasswd openssl ping mkdir cp awk sed shuf grep timedatectl python3 sqlite3"
 DOCKER_ROOT_DIR="$(docker info | grep "Docker Root Dir" | awk '{print $4}')"
 
 # variables for env
@@ -18,6 +18,11 @@ STORAGE_SONARR_DEFAULT="/opt/sonarr-media"
 DNSMASQ_DIR_DEFAULT="/opt/dnsmasq/dnsmasq.conf" # This is a file path.
 USER_TRAEFIK_DEFAULT="admin"
 PASS_TRAEFIK_RANDOM="$(openssl rand -base64 12)"
+
+# CLI mode variables
+CLI_MODE=false
+SKIP_CONFIRM=false
+QUIET_MODE=false
 
 # color builder and color check
 if [[ -t 1 ]]; then
@@ -34,9 +39,32 @@ err() { printf "${RED}[ERROR] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a 
 war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
 print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
 ask() { local msg; msg="${WHITE}[ASK] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rp "" input; } 
-ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n"; }
+ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n";}
 
-# trap check
+# Docker compose wrapper for compatibility
+docker_compose() {
+    if command -v docker-compose &>/dev/null; then
+        docker-compose "$@"
+    else
+        docker compose "$@"
+    fi
+}
+
+# Rollback function for error handling
+rollback() {
+    err "Erro detectado, revertendo alterações..."
+    if [[ -f "$backup_hosts_file" ]]; then
+        cp "$backup_hosts_file" /etc/hosts
+        log "Arquivo /etc/hosts restaurado"
+    fi
+    if command -v docker &>/dev/null; then
+        docker_compose down 2>/dev/null || true
+    fi
+    exit 1
+}
+
+# Set trap after functions are defined
+trap rollback ERR
 trap 'err "Interrompido pelo usuário."; exit 0' INT
 
 # root check
@@ -77,8 +105,9 @@ validate_domain() {
 
 validate_port() {
     local port="$1"
-    if ! echo "$port" | grep -qP '^:[0-9]+$' || ! echo "$port" || (( port < 1 || port > 65535 )); then # check ":" because it's a port prefix
-        err "Porta inválida: $port."
+    local port_num="${port#:}"  # Remove o prefixo ':'
+    if ! [[ "$port_num" =~ ^[0-9]+$ ]] || (( port_num < 1 || port_num > 65535 )); then
+        err "Porta inválida: $port"
         exit 1
     fi
 }
@@ -95,9 +124,9 @@ validate_storage_dir() {
     local dir="$1"
 
     if [[ ! -d "$dir" ]] || ! [[ "$dir" =~ ^/[a-zA-Z0-9/_-]+$ ]]; then
-        err "Diretório de armazenamento '$dir' não encontrado ou inválido. Abortando..."
-        exit 1
+        return 1  # Retorna erro em vez de sair
     fi
+    return 0  # Retorna sucesso
 }
 
 get_container_info_simple() {
@@ -116,6 +145,155 @@ get_container_info_simple() {
 
     printf "IP: %s - Portas mapeadas: %s - Portas ouvindo: %s\n" "$ip" "$portas" "$ouvindo"
 }
+
+# CLI argument parsing
+show_help() {
+    cat << EOF
+Selfhosted-Flix - Configure sua Netflix pessoal automaticamente
+
+USO:
+    $0 [OPÇÕES]
+
+OPÇÕES:
+    -h, --help                  Mostra esta ajuda
+    -y, --yes                   Pula todas as confirmações
+    -q, --quiet                 Modo silencioso (menos output)
+    --cli                       Modo CLI (não interativo)
+    
+    --tz TIMEZONE               Define timezone (ex: America/Sao_Paulo)
+    --domain DOMAIN             Define domínio (ex: flix.local)
+    --port PORT                 Define porta (ex: :80, :443, :8080)
+    --dns-mode MODE             DNS mode: hosts, dnsmasq, none
+    --storage-radarr PATH       Caminho para armazenamento Radarr
+    --storage-sonarr PATH       Caminho para armazenamento Sonarr
+    --traefik-user USER         Usuário do Traefik
+    --traefik-pass PASS         Senha do Traefik
+    
+    --preset PRESET             Usar preset de configuração:
+                                - minimal: Configuração mínima local
+                                - production: Configuração para produção
+                                - development: Configuração para desenvolvimento
+
+EXEMPLOS:
+    # Instalação interativa padrão
+    $0
+    
+    # Instalação automática com configurações personalizadas
+    $0 --cli --domain flix.home --port :443 --dns-mode dnsmasq -y
+    
+    # Usar preset de desenvolvimento
+    $0 --preset development -y
+    
+    # Instalação silenciosa com todas as opções
+    $0 --cli --tz America/Sao_Paulo --domain media.local --port :80 \\
+       --dns-mode hosts --storage-radarr /media/movies --storage-sonarr /media/series \\
+       --traefik-user admin --traefik-pass MySecurePass123 -q -y
+
+EOF
+    exit 0
+}
+
+# Parse CLI arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            ;;
+        -y|--yes)
+            SKIP_CONFIRM=true
+            shift
+            ;;
+        -q|--quiet)
+            QUIET_MODE=true
+            shift
+            ;;
+        --cli)
+            CLI_MODE=true
+            shift
+            ;;
+        --tz)
+            TZ="$2"
+            shift 2
+            ;;
+        --domain)
+            DOMAIN="$2"
+            shift 2
+            ;;
+        --port)
+            PORT_USED="$2"
+            shift 2
+            ;;
+        --dns-mode)
+            case "$2" in
+                hosts) DNSMASQ="0" ;;
+                dnsmasq) DNSMASQ="1" ;;
+                none) DNSMASQ="0" ;;
+                *) err "Modo DNS inválido: $2"; exit 1 ;;
+            esac
+            shift 2
+            ;;
+        --storage-radarr)
+            STORAGE_RADARR="$2"
+            shift 2
+            ;;
+        --storage-sonarr)
+            STORAGE_SONARR="$2"
+            shift 2
+            ;;
+        --traefik-user)
+            USER_TRAEFIK="$2"
+            shift 2
+            ;;
+        --traefik-pass)
+            PASS_TRAEFIK_RANDOM="$2"
+            shift 2
+            ;;
+        --preset)
+            case "$2" in
+                minimal)
+                    DOMAIN="localhost"
+                    PORT_USED=":80"
+                    DNSMASQ="0"
+                    STORAGE_RADARR="/opt/radarr-media"
+                    STORAGE_SONARR="/opt/sonarr-media"
+                    USER_TRAEFIK="admin"
+                    log "Usando preset: minimal (configuração local mínima)"
+                    ;;
+                production)
+                    PORT_USED=":443"
+                    DNSMASQ="1"
+                    STORAGE_RADARR="/mnt/media/movies"
+                    STORAGE_SONARR="/mnt/media/series"
+                    log "Usando preset: production (requer domínio válido)"
+                    ;;
+                development)
+                    DOMAIN="dev.local"
+                    PORT_USED=":8080"
+                    DNSMASQ="0"
+                    STORAGE_RADARR="/tmp/radarr-dev"
+                    STORAGE_SONARR="/tmp/sonarr-dev"
+                    USER_TRAEFIK="dev"
+                    log "Usando preset: development"
+                    ;;
+                *)
+                    err "Preset inválido: $2"
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
+        *)
+            err "Opção desconhecida: $1"
+            show_help
+            ;;
+    esac
+done
+
+# Modify print functions for quiet mode
+if [[ "$QUIET_MODE" == true ]]; then
+    print() { :; }  # No-op function
+    war() { printf "${YELLOW}[WARN] $*${RESET}\n" >&2; }  # Still show warnings
+fi
 
 # inicialization
 print "Iniciando script..."
@@ -150,6 +328,45 @@ printf "${GREEN}🐧 Coded by:msouza10 ${RESET}\n"
 echo
 
 print "Iniciando configuração do ambiente...\n"
+
+# Skip interactive mode if CLI mode is enabled
+if [[ "$CLI_MODE" == true ]]; then
+    log "Modo CLI ativado - pulando configuração interativa"
+    
+    # Validate required parameters
+    : ${TZ:=$TZ_DEFAULT}
+    : ${DOMAIN:=$DOMAIN_DEFAULT}
+    : ${PORT_USED:=$PORT_USED_DEFAULT}
+    : ${STORAGE_RADARR:=$STORAGE_RADARR_DEFAULT}
+    : ${STORAGE_SONARR:=$STORAGE_SONARR_DEFAULT}
+    : ${USER_TRAEFIK:=$USER_TRAEFIK_DEFAULT}
+    : ${DNSMASQ:="0"}
+    : ${DNSMASQ_DIR:=$DNSMASQ_DIR_DEFAULT}
+    
+    # Validate parameters
+    if [[ "$DOMAIN" != "localhost" ]]; then
+        validate_domain "$DOMAIN" || exit 1
+    fi
+    validate_port "$PORT_USED" || exit 1
+    
+    # Create directories if needed
+    mkdir -p "$STORAGE_RADARR" "$STORAGE_SONARR"
+    
+    # Generate password if not provided
+    if [[ -z "${PASS_TRAEFIK_RANDOM:-}" ]]; then
+        PASS_TRAEFIK_RANDOM="$(openssl rand -base64 12)"
+        log "Senha Traefik gerada automaticamente"
+    fi
+    
+    PASS_TRAEFIK=$(htpasswd -nbB "$USER_TRAEFIK" "$PASS_TRAEFIK_RANDOM" | cut -d ':' -f2 | sed -e 's/\$/\$\$/g')
+    
+    # Skip to configuration generation
+    goto_config_generation=true
+else
+    goto_config_generation=false
+fi
+
+if [[ "$goto_config_generation" == false ]]; then
 
 sleep 3
 clear
@@ -464,8 +681,14 @@ printf "${WHITE}Resumo das Configurações:
   Arquivo DNSMASQ Conf: "$DNSMASQ_DIR"
   ${RESET}
 "
-ask "Confirmar estas configurações e prosseguir com a instalação? [s/N]: "
-[[ "$input" =~ ^[sS]$ ]] || { log "Instalação cancelada pelo usuário."; exit 1; }
+
+# Handle confirmation based on mode
+if [[ "$SKIP_CONFIRM" == false ]]; then
+    ask "Confirmar estas configurações e prosseguir com a instalação? [s/N]: "
+    [[ "$input" =~ ^[sS]$ ]] || { log "Instalação cancelada pelo usuário."; exit 1; }
+else
+    log "Confirmação automática ativada (-y)"
+fi
 
 cat > .env <<EOF
 TZ="$TZ"
@@ -509,7 +732,7 @@ listen-address=0.0.0.0
 EOF
   print "Arquivo de configuração do dnsmasq '$DNSMASQ_DIR' gerado."
   print "Iniciando os contêineres (perfil 'dns' ativo)..."
-  docker-compose --profile dns up -d
+  docker_compose --profile dns up -d
 
   print "Aguardando alguns segundos para que os contêineres iniciem..."
   sleep 10
@@ -530,7 +753,7 @@ EOF
   done
 else
   log "DNSMASQ desativado. Iniciando os contêineres (sem perfil 'dns')..."
-  docker-compose up -d
+  docker_compose up -d
 
   print "Aguardando alguns segundos para que os contêineres iniciem..."
   sleep 5 # Shorter wait if no DNS setup involved
@@ -558,26 +781,84 @@ print "  Traefik    : http://traefik.$DOMAIN$PORT_USED (dashboard) - $(get_conta
 print "\nLembre-se de que a resolução de DNS pode levar alguns instantes para propagar ou pode requerer limpeza de cache DNS no seu sistema."
 print "Log do script: "$logfile" \n"
 
-ask "Deseja configurar os ambientes? [s/N]: "
-
-if [[ "$input" =~ ^[sS]$ ]]; then
-    war "Vamos realizar a configuração dos ambientes, pensando em deixar um ambiente pre-pronto para o uso."
-    war "Porem pode ser necessario realizar algumas configurações manuais."
-    war "criando pasta com todos os backup dentro /opt/backup/"
-    $backup_dir="/opt/backup"
-    mkdir -p $backup_dir/$SERVICES_HOSTS
-    source setups/args.sh
-    source setups/heimdall.sh
-    source setups/qbittorrent.sh
-    source setups/radarr.sh
-    source setups/sonarr.sh
-    source setups/prowlarr.sh
+# Handle post-installation configuration
+if [[ "$CLI_MODE" == true ]]; then
+    # In CLI mode, skip interactive configuration
+    log "Modo CLI - configuração dos ambientes não será executada automaticamente"
+    log "Para configurar os ambientes, execute: $0 --configure-environments"
+    
+    # Show credentials summary
+    print "\n${GREEN}=== RESUMO DAS CREDENCIAIS ===${RESET}"
+    print "Traefik Dashboard:"
+    print "  URL: http://traefik.$DOMAIN$PORT_USED"
+    print "  Usuário: $USER_TRAEFIK"
+    print "  Senha: $PASS_TRAEFIK_RANDOM"
+    print "\nqBittorrent:"
+    print "  URL: http://qbittorrent.$DOMAIN$PORT_USED"
+    print "  Senha inicial: Verifique com 'docker logs qbittorrent | grep password'"
+    print "\nAcesse os serviços e complete a configuração manualmente."
 else
-    log "os serviços foram iniciados com sucesso e estão em execução."
-    war "o qbittorrent criara uma senha randomica, para ter acesso a ela veja nos logs com co comando 'docker logs qbittorrent' ou anota a senha abaixo"
-    docker logs qbittorrent | grep -r "The WebUI administrator password"
-    exit 1
+    ask "Deseja configurar os ambientes? [s/N]: "
+    
+    if [[ "$input" =~ ^[sS]$ ]]; then
+        war "Vamos realizar a configuração dos ambientes, pensando em deixar um ambiente pre-pronto para o uso."
+        war "Porem pode ser necessario realizar algumas configurações manuais."
+        war "criando pasta com todos os backup dentro /opt/backup/"
+        backup_dir="/opt/backup"
+        export backup_dir
+        for backup_path in $SERVICES_HOSTS; do
+            if [[ ! -d $backup_dir/$backup_path ]]; then
+                if mkdir -p $backup_dir/$backup_path; then
+                    log "Pasta de backup criada: $backup_dir/$backup_path"
+                else
+                    err "Erro ao criar a pasta de backup: $backup_dir/$backup_path"
+                    exit 1
+                fi
+            else
+                log "Pasta de backup já existe: $backup_dir/$backup_path"
+            fi
+        done
+        source setups/args.sh
+        source setups/heimdall.sh
+        source setups/qbittorrent.sh
+        source setups/radarr.sh
+        source setups/sonarr.sh
+        source setups/prowlarr.sh
+    else
+        log "os serviços foram iniciados com sucesso e estão em execução."
+        war "o qbittorrent criara uma senha randomica, para ter acesso a ela veja nos logs com co comando 'docker logs qbittorrent' ou anota a senha abaixo"
+        docker logs qbittorrent | grep -r "The WebUI administrator password"
+    fi
 fi
+
+# Salvando arquivo com credenciais para referência
+save_credentials() {
+    local cred_file="/opt/selfhosted-flix/.credentials"
+    mkdir -p "$(dirname "$cred_file")"
+    touch "$cred_file"
+    chmod 600 "$cred_file"
+    cat > "$cred_file" << EOF
+# Credenciais Selfhosted-Flix - Geradas em $(date)
+# MANTENHA ESTE ARQUIVO SEGURO!
+
+TRAEFIK_USER=$USER_TRAEFIK
+TRAEFIK_PASS=$PASS_TRAEFIK_RANDOM
+
+# URLs de acesso:
+JELLYFIN_URL=http://jellyfin.$DOMAIN$PORT_USED
+SONARR_URL=http://sonarr.$DOMAIN$PORT_USED
+RADARR_URL=http://radarr.$DOMAIN$PORT_USED
+QBITTORRENT_URL=http://qbittorrent.$DOMAIN$PORT_USED
+HEIMDALL_URL=http://heimdall.$DOMAIN$PORT_USED
+TRAEFIK_URL=http://traefik.$DOMAIN$PORT_USED
+EOF
+    log "Credenciais salvas em: $cred_file"
+}
+
+save_credentials
+
+print "\n${GREEN}Instalação concluída com sucesso!${RESET}"
+exit 0
 
 
 
