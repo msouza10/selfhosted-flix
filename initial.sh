@@ -858,7 +858,4 @@ EOF
 save_credentials
 
 print "\n${GREEN}Instalação concluída com sucesso!${RESET}"
-exit 0
-
-
-
+exit
