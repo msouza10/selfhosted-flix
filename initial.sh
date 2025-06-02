@@ -39,10 +39,10 @@ fi
 
 logfile="logs/initial-$(date +%Y%m%d).log" && touch $logfile
 
-log() { printf "${BLUE}[INFO] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
-err() { printf "${RED}[ERROR] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
-war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
-print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
+log() { printf "${BLUE}[INFO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+err() { printf "${RED}[ERROR] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
 ask() { local msg; msg="${WHITE}[ASK] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rp "" input; } 
 ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n";}
 
