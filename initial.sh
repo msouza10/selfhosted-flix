@@ -33,7 +33,9 @@ else
 fi
 
 # prints models
-logfile="logs/initial-$(date +%Y%m%d).log" && touch $logfile # logfile path
+logdir="./logs"
+mkdir -p $logdir
+logfile="/logs/initial-$(date +%Y%m%d).log" && touch $logfile # logfile path
 log() { printf "${BLUE}[INFO] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
 err() { printf "${RED}[ERROR] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
 war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee -a $logfile ; } 
