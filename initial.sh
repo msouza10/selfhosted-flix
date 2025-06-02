@@ -43,6 +43,14 @@ print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S:') - $* ${RESET} \n" | tee 
 ask() { local msg; msg="${WHITE}[ASK] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rp "" input; } 
 ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n";}
 
+# root check
+if [[ $EUID -ne 0 ]]; then
+  err "Inicie como root (sudo)."
+  exit 1
+else
+  log "Iniciado como root."
+fi
+
 # Docker compose wrapper for compatibility
 docker_compose() {
     if command -v docker-compose &>/dev/null; then
@@ -69,18 +77,10 @@ rollback() {
 trap rollback ERR
 trap 'err "Interrompido pelo usuário."; exit 0' INT
 
-# root check
-if [[ $EUID -ne 0 ]]; then
-  err "Inicie como root (sudo)."
-  exit 1
-else
-  log "Iniciado como root."
-fi
-
 # check requirements
 mapfile -t REQUIREMENTS < <(grep -vE '^\s*(#|$)' "$REQUIREMENTS")
 
-print "Verificando requisitos..."
+log "Verificando requisitos..."
 
 for cmd in "${REQUIREMENTS[@]}"; do
     if ! command -v $cmd &>/dev/null; then
@@ -91,7 +91,7 @@ for cmd in "${REQUIREMENTS[@]}"; do
     fi
 done
 
-print "Verificando conexão com a internet..."
+log "Verificando conexão com a internet..."
 
 # check connection
 if ! ping -c 3 google.com &>/dev/null; then
@@ -375,6 +375,8 @@ else
 fi
 
 if [[ "$goto_config_generation" == false ]]; then
+    print "Configuração interativa ativada..."
+fi
 
 sleep 3
 clear
@@ -866,4 +868,5 @@ EOF
 save_credentials
 
 print "\n${GREEN}Instalação concluída com sucesso!${RESET}"
-exit
+
+exit 0
