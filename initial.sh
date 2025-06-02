@@ -5,7 +5,7 @@ set -euo pipefail
 # variables general
 BANNER_DIR="banners/ascii_fonts"
 SERVICES_HOSTS="traefik radarr sonarr jellyfin qbittorrent dnsmasq heimdall"
-REQUIREMENTS="docker htpasswd openssl ping mkdir cp awk sed shuf grep timedatectl python3 sqlite3"
+REQUIREMENTS="requirements-pkgs.txt"
 DOCKER_ROOT_DIR="$(docker info | grep "Docker Root Dir" | awk '{print $4}')"
 
 # variables for env
@@ -78,7 +78,11 @@ else
 fi
 
 # check requirements
-for cmd in $REQUIREMENTS; do
+mapfile -t REQUIREMENTS < <(grep -vE '^\s*(#|$)' "$REQUIREMENTS")
+
+print "Verificando requisitos..."
+
+for cmd in "${REQUIREMENTS[@]}"; do
     if ! command -v $cmd &>/dev/null; then
         err "$cmd não encontrado, necessário para prosseguir. Abortando..."
         exit 1
@@ -86,6 +90,8 @@ for cmd in $REQUIREMENTS; do
         log "$cmd encontrado."
     fi
 done
+
+print "Verificando conexão com a internet..."
 
 # check connection
 if ! ping -c 3 google.com &>/dev/null; then

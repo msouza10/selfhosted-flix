@@ -1,0 +1,13 @@
+docker 
+htpasswd
+openssl
+ping
+mkdir
+cp
+awk
+sed
+shuf
+grep
+timedatectl
+python3
+sqlite3
