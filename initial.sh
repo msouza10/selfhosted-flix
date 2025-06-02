@@ -51,15 +51,6 @@ else
   log "Iniciado como root."
 fi
 
-# Docker compose wrapper for compatibility
-docker_compose() {
-    if command -v docker-compose &>/dev/null; then
-        docker-compose "$@"
-    else
-        docker compose "$@"
-    fi
-}
-
 # Rollback function for error handling
 rollback() {
     err "Erro detectado, revertendo alterações..."
@@ -91,6 +82,15 @@ for cmd in "${REQUIREMENTS[@]}"; do
     fi
 done
 
+# Docker compose wrapper for compatibility
+docker_compose() {
+    if command -v docker-compose &>/dev/null; then
+        docker-compose "$@"
+    else
+        docker compose "$@"
+    fi
+}
+
 log "Verificando conexão com a internet..."
 
 # check connection
@@ -113,7 +113,7 @@ validate_domain() {
 
 validate_port() {
     local port="$1"
-    local port_num="${port#:}"  # Remove o prefixo ':'
+    local port_num="${port#:}"
     if ! [[ "$port_num" =~ ^[0-9]+$ ]] || (( port_num < 1 || port_num > 65535 )); then
         err "Porta inválida: $port"
         exit 1
@@ -132,26 +132,49 @@ validate_storage_dir() {
     local dir="$1"
 
     if [[ ! -d "$dir" ]] || ! [[ "$dir" =~ ^/[a-zA-Z0-9/_-]+$ ]]; then
-        return 1  # Retorna erro em vez de sair
+        err "Diretório de configuração '$dir' não encontrado ou inválido."
+        exit 1
     fi
-    return 0  # Retorna sucesso
 }
 
 get_container_info_simple() {
     local cname="$1"
-    # IP do container (pode ser vazio se não estiver em bridge)
     local ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$cname" 2>/dev/null)
     [ -z "$ip" ] && ip="N/A"
 
-    # Portas mapeadas
     local portas=$(docker port "$cname" 2>/dev/null | paste -sd "," -)
     [ -z "$portas" ] && portas="Nenhuma"
 
-    # Portas ouvindo dentro do container (não é EXPOSE, mas é útil)
     local ouvindo=$(docker exec "$cname" sh -c 'ss -tuln 2>/dev/null || netstat -tuln 2>/dev/null' 2>/dev/null | awk 'NR>1{print $5}' | awk -F: '{print $NF}' | sort -n | uniq | paste -sd "," -)
     [ -z "$ouvindo" ] && ouvindo="Indisponível"
 
     printf "IP: %s - Portas mapeadas: %s - Portas ouvindo: %s\n" "$ip" "$portas" "$ouvindo"
+}
+
+# check dns and disable dns in router
+mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53 / && /LISTEN/ {print $NF}' | sed -E 's/users:\(\("([^"]+)",.*/\1/' | sort | uniq)
+check_local_dns() {
+  if [[ ${#NAMES_DNSLOCAL[@]} -gt 1 ]]; then
+    war "Mais de um Serviço de DNS local encontrado, rodando na porta 53."
+    ask "Qual serviço de DNS local você deseja desabilitar?"
+    for name in "${NAMES_DNSLOCAL[@]}"; do
+      if [[ "$name" == "$input" ]]; then
+        log "Desabilitando DNS local..."
+        sudo systemctl stop $name
+        sudo systemctl disable $name
+        log "DNS local desabilitado."
+      fi
+    done
+  else
+    log "Apenas um Serviço de DNS local encontrado, rodando na porta 53."
+    ask "Deseja realmente desabilitar o DNS local?"
+    if [[ "$input" == "y" ]]; then
+      log "Desabilitando DNS local..."
+      sudo systemctl stop $NAMES_DNSLOCAL
+      sudo systemctl disable $NAMES_DNSLOCAL
+      log "DNS local desabilitado."
+    fi
+  fi
 }
 
 # CLI argument parsing
@@ -443,11 +466,15 @@ case "$input" in
     ;;
 esac
 
-print "Para este domínio funcionar, é necessário que sua máquina o reconheça de alguma forma:"
+print "Para este domínio funcionar, é necessário que sua máquina o reconheça de alguma forma:\n"
 
 print "1 - Adicionar ao arquivo /etc/hosts da sua máquina"
 print "2 - Subir um contêiner dnsmasq para resolução local de DNS"
-print "3 - Não adicionar (você precisará configurar a resolução DNS manualmente)"
+print "3 - Não adicionar (você precisará configurar a resolução DNS manualmente)\n"
+
+war "ao selecionar a opção 1, as entradas de DNS serão adicionadas ao arquivo /etc/hosts da sua máquina, funcionando apenas na maquina atual, sera necessario adicionar as entradas DNS ao seu servidor DNS local ou ao arquivo hosts de cada máquina cliente."
+war "ao selecionar a opção 2, o seu resolver interno substituirá o DNS do seu roteador ou servidor DNS local, outras maquinas precisarão configurar o DNS para o seu domínio."
+war "ao selecionar a opção 3, você precisará configurar a resolução DNS manualmente."
 
 ask "Selecione [1/3]: "
 
@@ -742,6 +769,11 @@ listen-address=0.0.0.0
 EOF
   print "Arquivo de configuração do dnsmasq '$DNSMASQ_DIR' gerado."
   print "Iniciando os contêineres (perfil 'dns' ativo)..."
+
+  docker_compose pull $DOCKER_SERVICES_TO_CHECK
+
+  check_local_dns()
+
   docker_compose --profile dns up -d
 
   print "Aguardando alguns segundos para que os contêineres iniciem..."
@@ -841,7 +873,6 @@ else
     fi
 fi
 
-# Salvando arquivo com credenciais para referência
 save_credentials() {
     local cred_file="/opt/selfhosted-flix/.credentials"
     mkdir -p "$(dirname "$cred_file")"
