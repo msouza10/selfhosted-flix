@@ -775,9 +775,9 @@ EOF
 
   docker_compose pull $DOCKER_SERVICES_TO_CHECK
 
-  check_local_dns()
+  check_local_dns
 
-  docker_compose --profile dns up -d 
+  docker_compose --profile dns up -d
 
   print "Aguardando alguns segundos para que os contêineres iniciem..."
   sleep 10
