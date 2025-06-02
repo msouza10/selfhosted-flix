@@ -159,22 +159,25 @@ mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53 / && /LISTEN/ {print $N
 check_local_dns() {
   if [[ ${#NAMES_DNSLOCAL[@]} -gt 1 ]]; then
     war "Mais de um Serviço de DNS local encontrado, rodando na porta 53."
-    ask "Qual serviço de DNS local você deseja desabilitar?"
+    ask "Qual serviço de DNS local você deseja desabilitar (ex: dnsmasq)?"
     for name in "${NAMES_DNSLOCAL[@]}"; do
-      if [[ "$name" == "$input" ]]; then
-        log "Desabilitando DNS local..."
-        sudo systemctl stop $name
-        sudo systemctl disable $name
-        log "DNS local desabilitado."
-      fi
+        print "-[$name]"
+            if [[ "$name" == "$input" ]]; then
+                log "Desabilitando DNS local..."
+                sudo systemctl stop $name
+                sudo systemctl disable $name
+                sudo systemctl unmask $name
+                log "DNS local desabilitado."
+            fi
     done
   else
     log "Apenas um Serviço de DNS local encontrado, rodando na porta 53."
-    ask "Deseja realmente desabilitar o DNS local?"
-    if [[ "$input" == "y" ]]; then
+    ask "Deseja realmente desabilitar o DNS local [s/N]?"
+    if [[ "$input" == "s" ]]; then
       log "Desabilitando DNS local..."
       sudo systemctl stop $NAMES_DNSLOCAL
       sudo systemctl disable $NAMES_DNSLOCAL
+      sudo systemctl unmask $NAMES_DNSLOCAL
       log "DNS local desabilitado."
     fi
   fi
@@ -407,7 +410,8 @@ fi
 sleep 3
 clear
 
-print "Fuso horário a ser utilizado:"
+print "Fuso horário a ser utilizado:\n"
+
 print "1 - Padrão da sua máquina ($TZ_DEFAULT)"
 print "2 - Escolher outro\n"
 
@@ -777,7 +781,13 @@ EOF
 
   check_local_dns
 
-  docker_compose --profile dns up -d
+  if docker_compose --profile dns up -d; then
+    log "Contêineres iniciados com sucesso."
+  else
+    err "Erro ao iniciar os contêineres."
+    docker-compose down -v --remove-orphans
+    exit 1
+  fi
 
   print "Aguardando alguns segundos para que os contêineres iniciem..."
   sleep 10
@@ -794,6 +804,7 @@ EOF
       print "Serviço $service.$DOMAIN resolvido com sucesso para $dns_ip."
     else
       war "Serviço $service.$DOMAIN não foi resolvido corretamente via $dns_ip (esperado: $dns_ip)."
+      systemctl restart $service
     fi
   done
 else
