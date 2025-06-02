@@ -166,14 +166,14 @@ services:
       - "--providers.docker=true"
       - "--api.dashboard=true"
       - "--api.debug=true"
-      - "--entrypoints.web.address=:${PORT_USED}"
+      - "--entrypoints.web.address=:${PORT}"
     ports:
-      - "${PORT_USED}:${PORT_USED}"
+      - "${PORT}:${PORT}"
     labels:
       - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
       - "traefik.http.routers.traefik-dashboard.entrypoints=web"
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${USER_TRAEFIK}:${PASS_TRAEFIK}"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_USER}:${TRAEFIK_PASS}"
       - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
