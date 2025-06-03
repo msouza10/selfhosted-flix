@@ -56,8 +56,8 @@ fi
 
 # Rollback function for error handling
 rollback() {
-    err "Erro detectado, revertendo alterações..."
     if [[ -f "$backup_hosts_file" ]]; then
+        err "Erro detectado, revertendo alterações..."
         cp "$backup_hosts_file" /etc/hosts
         log "Arquivo /etc/hosts restaurado"
     fi
@@ -149,6 +149,14 @@ get_container_info_simple() {
 # check dns and disable dns in router
 mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53 / && /LISTEN/ {print $NF}' | sed -E 's/users:\(\("([^"]+)",.*/\1/' | sort | uniq)
 check_local_dns() {
+  if [[ "${NAMES_DNSLOCAL[0]}" == "systemd-resolve" ]]; then
+    log "systemd-resolve encontrado, desabilitando..."
+    sudo systemctl stop systemd-resolved
+    sudo systemctl disable systemd-resolved
+    sudo systemctl unmask systemd-resolved
+    log "systemd-resolved desabilitado."
+  fi
+
   if [[ ${#NAMES_DNSLOCAL[@]} -gt 1 ]]; then
     war "Mais de um Serviço de DNS local encontrado, rodando na porta 53."
     ask "Qual serviço de DNS local você deseja desabilitar (ex: dnsmasq)?"
@@ -165,7 +173,7 @@ check_local_dns() {
   else
     log "Apenas um Serviço de DNS local encontrado, rodando na porta 53."
     ask "Deseja realmente desabilitar o DNS local [s/N]?"
-    if [[ "$input" == "s" ]]; then
+    if [[ "$input" =~ ^[sS]$ ]]; then
       log "Desabilitando DNS local..."
       sudo systemctl stop $NAMES_DNSLOCAL
       sudo systemctl disable $NAMES_DNSLOCAL
