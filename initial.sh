@@ -750,7 +750,7 @@ EOF
 
 print "Arquivo .env gerado com sucesso."
 
-DOCKER_SERVICES_TO_CHECK="traefik radarr sonarr jellyfin qbittorrent heimdall prowlarr dnsmasq whoami"
+DOCKER_SERVICES_TO_CHECK="traefik radarr sonarr jellyfin qbittorrent heimdall prowlarr dnsmasq whoami watchtower"
 
 if [[ $DNSMASQ == "1" ]]; then
   log "DNSMASQ ativado. Configurando..."
