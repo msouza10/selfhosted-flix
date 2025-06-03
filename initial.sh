@@ -174,6 +174,7 @@ check_local_dns() {
         sudo systemctl disable systemd-resolved
         sudo systemctl unmask systemd-resolved
         log "systemd-resolved desabilitado."
+        return 0
       fi
       sudo systemctl stop $NAMES_DNSLOCAL
       sudo systemctl disable $NAMES_DNSLOCAL
