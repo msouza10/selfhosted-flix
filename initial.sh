@@ -85,14 +85,6 @@ for cmd in "${REQUIREMENTS[@]}"; do
     fi
 done
 
-# Docker compose wrapper for compatibility
-docker_compose() {
-    if command -v docker-compose &>/dev/null; then
-        docker-compose "$@"
-    else
-        docker compose "$@"
-    fi
-}
 
 log "Verificando conexão com a internet..."
 
