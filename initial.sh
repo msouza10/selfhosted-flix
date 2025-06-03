@@ -62,7 +62,7 @@ rollback() {
         log "Arquivo /etc/hosts restaurado"
     fi
     if command -v docker &>/dev/null; then
-        docker compose down 2>/dev/null || true
+        docker_compose down 2>/dev/null || true
     fi
     exit 1
 }
@@ -769,11 +769,11 @@ EOF
   print "Arquivo de configuração do dnsmasq '$DNSMASQ_DIR' gerado."
   print "Iniciando os contêineres (perfil 'dns' ativo)..."
 
-  docker compose pull $DOCKER_SERVICES_TO_CHECK
+  docker_compose pull $DOCKER_SERVICES_TO_CHECK
 
   check_local_dns
 
-  if docker compose --profile dns up -d; then
+  if docker_compose --profile dns up -d; then
     log "Contêineres iniciados com sucesso."
   else
     err "Erro ao iniciar os contêineres."
@@ -801,7 +801,7 @@ EOF
   done
 else
   log "DNSMASQ desativado. Iniciando os contêineres (sem perfil 'dns')..."
-  docker compose up -d
+  docker_compose up -d
 
   print "Aguardando alguns segundos para que os contêineres iniciem..."
   sleep 5 # Shorter wait if no DNS setup involved
