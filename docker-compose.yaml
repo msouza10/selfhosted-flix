@@ -197,6 +197,8 @@ services:
     restart: unless-stopped
     networks:
       - traefik_net
+    cap_add:
+      - NET_ADMIN
     logging:
       driver: "json-file"
       options:

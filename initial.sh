@@ -11,8 +11,8 @@ DOCKER_ROOT_DIR="$(docker info | grep "Docker Root Dir" | awk '{print $4}')"
 # variables for env
 TZ_DEFAULT="$(timedatectl show --property=Timezone --value)"
 DOMAIN_DEFAULT="localhost"
-PORT_USED_DEFAULT=":80"
-PORT_USED_DEFAULT_SSL=":443"
+PORT_USED_DEFAULT="80"
+PORT_USED_DEFAULT_SSL="443"
 STORAGE_RADARR_DEFAULT="/opt/radarr-media"
 STORAGE_SONARR_DEFAULT="/opt/sonarr-media"
 DNSMASQ_DIR_DEFAULT="/opt/dnsmasq/dnsmasq.conf" # This is a file path.
@@ -201,7 +201,7 @@ OPÇÕES:
     
     --tz TIMEZONE               Define timezone (ex: America/Sao_Paulo)
     --domain DOMAIN             Define domínio (ex: flix.local)
-    --port PORT                 Define porta (ex: :80, :443, :8080)
+    --port PORT                 Define porta (ex: 80, 443, 8080)
     --dns-mode MODE             DNS mode: hosts, dnsmasq, none
     --storage-radarr PATH       Caminho para armazenamento Radarr
     --storage-sonarr PATH       Caminho para armazenamento Sonarr
@@ -568,7 +568,7 @@ case "$input" in
     war "Ao usar HTTPS ($PORT_USED_DEFAULT_SSL), você precisará configurar certificados SSL para seu domínio. Caso contrário, os serviços poderão apresentar alertas de segurança no navegador."
     ;;
     3)
-    ask "Digite a porta que deseja usar (prefixada com ':', ex: :9393): "
+    ask "Digite a porta que deseja usar (ex: 9393): "
       if ! validate_port "$input"; then
         err "Porta inválida: $input. Tente novamente."
         exit 1
