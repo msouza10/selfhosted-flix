@@ -750,7 +750,7 @@ EOF
 
 print "Arquivo .env gerado com sucesso."
 
-DOCKER_SERVICES_TO_CHECK="traefik radarr sonarr jellyfin qbittorrent heimdall"
+DOCKER_SERVICES_TO_CHECK="traefik radarr sonarr jellyfin qbittorrent heimdall prowlarr dnsmasq"
 
 if [[ $DNSMASQ == "1" ]]; then
   log "DNSMASQ ativado. Configurando..."
@@ -769,6 +769,7 @@ address=/radarr.$DOMAIN/$dns_ip
 address=/qbittorrent.$DOMAIN/$dns_ip
 address=/heimdall.$DOMAIN/$dns_ip
 address=/traefik.$DOMAIN/$dns_ip
+address=/prowlarr.$DOMAIN/$dns_ip
 
 # Configurações adicionais
 listen-address=0.0.0.0
