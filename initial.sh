@@ -149,13 +149,6 @@ get_container_info_simple() {
 # check dns and disable dns in router
 mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53 / && /LISTEN/ {print $NF}' | sed -E 's/users:\(\("([^"]+)",.*/\1/' | sort | uniq)
 check_local_dns() {
-  if [[ "${NAMES_DNSLOCAL[0]}" == "systemd-resolve" ]]; then
-    log "systemd-resolve encontrado, desabilitando..."
-    sudo systemctl stop systemd-resolved
-    sudo systemctl disable systemd-resolved
-    sudo systemctl unmask systemd-resolved
-    log "systemd-resolved desabilitado."
-  fi
 
   if [[ ${#NAMES_DNSLOCAL[@]} -gt 1 ]]; then
     war "Mais de um Serviço de DNS local encontrado, rodando na porta 53."
@@ -175,10 +168,18 @@ check_local_dns() {
     ask "Deseja realmente desabilitar o DNS local [s/N]?"
     if [[ "$input" =~ ^[sS]$ ]]; then
       log "Desabilitando DNS local..."
+      if [[ "${NAMES_DNSLOCAL[0]}" == "systemd-resolve" ]]; then
+        log "systemd-resolve encontrado, desabilitando..."
+        sudo systemctl stop systemd-resolved
+        sudo systemctl disable systemd-resolved
+        sudo systemctl unmask systemd-resolved
+        log "systemd-resolved desabilitado."
+      fi
       sudo systemctl stop $NAMES_DNSLOCAL
       sudo systemctl disable $NAMES_DNSLOCAL
       sudo systemctl unmask $NAMES_DNSLOCAL
       log "DNS local desabilitado."
+      war "Sua maquina esta sem DNS local e sem acesso a internet, caso precise acessar verifique $NAMES_DNSLOCAL"
     fi
   fi
 }
@@ -786,6 +787,7 @@ EOF
   else
     err "Erro ao iniciar os contêineres."
     docker-compose down -v --remove-orphans
+    systemctl restart $NAMES_DNSLOCAL
     exit 1
   fi
 
