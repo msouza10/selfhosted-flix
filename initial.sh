@@ -2,10 +2,56 @@
 
 set -euo pipefail
 
-# variables general
+# color builder and color check
+if [[ -t 1 ]]; then
+  RED="\033[1;31m"; BLUE="\033[1;34m"; YELLOW="\033[1;33m"; GREEN="\033[1;32m"; WHITE="\033[1;37m"
+  RESET="\033[0m" 
+else
+  RED=; BLUE=; YELLOW=; GREEN=; RESET=
+fi
+
+# prints models and logs
+if [[ ! -d "logs" ]]; then
+  mkdir -p logs
+fi
+
+logfile="logs/initial-$(date +%Y%m%d%H%M%S).log" && touch $logfile
+
+log() { printf "${BLUE}[INFO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+err() { printf "${RED}[ERROR] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
+ask() { local msg; msg="${WHITE}[ASK] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rp "" input; } 
+ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n";}
+
+# root check
+if [[ $EUID -ne 0 ]]; then
+  err "Inicie como root (sudo)."
+  exit 1
+else
+  log "Iniciado como root."
+fi
+
+# check requirements
+REQUIREMENTS="requirements-pkgs.txt"
+mapfile -t REQUIREMENTS < <(grep -vE '^\s*(#|$)' "$REQUIREMENTS")
+
+log "Verificando requisitos..."
+
+for cmd in "${REQUIREMENTS[@]}"; do
+    if ! command -v $cmd &>/dev/null; then
+        err "$cmd não encontrado, necessário para prosseguir. Abortando..."
+        exit 1
+    else
+        log "$cmd encontrado."
+    fi
+done
+
+
+
+# variables
 BANNER_DIR="banners/ascii_fonts"
 SERVICES_HOSTS="traefik radarr sonarr jellyfin qbittorrent dnsmasq heimdall"
-REQUIREMENTS="requirements-pkgs.txt"
 DOCKER_ROOT_DIR="$(docker info | grep "Docker Root Dir" | awk '{print $4}')"
 
 # variables for env
@@ -24,66 +70,56 @@ CLI_MODE=false
 SKIP_CONFIRM=false
 QUIET_MODE=false
 
-# color builder and color check
-if [[ -t 1 ]]; then
-  RED="\033[1;31m"; BLUE="\033[1;34m"; YELLOW="\033[1;33m"; GREEN="\033[1;32m"; WHITE="\033[1;37m"
-  RESET="\033[0m" 
-else
-  RED=; BLUE=; YELLOW=; GREEN=; RESET=
-fi
-
-# prints models and logs
-if [[ ! -d "logs" ]]; then
-  mkdir -p logs
-fi
-
-logfile="logs/initial-$(date +%Y%m%d).log" && touch $logfile
-
-log() { printf "${BLUE}[INFO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
-err() { printf "${RED}[ERROR] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
-war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
-print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
-ask() { local msg; msg="${WHITE}[ASK] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rp "" input; } 
-ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n";}
-
-# root check
-if [[ $EUID -ne 0 ]]; then
-  err "Inicie como root (sudo)."
-  exit 1
-else
-  log "Iniciado como root."
-fi
-
 # Rollback function for error handling
 rollback() {
-    if [[ -f "$backup_hosts_file" ]]; then
-        err "Erro detectado, revertendo alterações..."
+
+    war "Iniciando rollback..."
+
+    if [[ "$DNSMASQ" -gt 1 ]]; then
+      if [[ -f "$backup_hosts_file" ]]; then
         cp "$backup_hosts_file" /etc/hosts
         log "Arquivo /etc/hosts restaurado"
+      else
+        err "Arquivo de backup /etc/hosts não encontrado, revertendo para o padrão..."
+      fi
+    else
+      log "DNSMASQ ou Solicitado para não ser usado /etc/hosts, não será restaurado."
+      if [[ "$(systemctl is-active $NAMES_DNSLOCAL)" == "active" ]]; then
+        log "nao e necessario reiniciar, pois ja esta ativo $NAMES_DNSLOCAL..."
+      else
+        log "$NAMES_DNSLOCAL não está ativo, e sera reiniciado."
+        if [[ "$NAMES_DNSLOCAL" == "systemd-resolve" ]]; then
+          log "systemd-resolved encontrado, habilitando..."
+          sudo systemctl start systemd-resolved
+          sudo systemctl enable systemd-resolved
+          log "systemd-resolved habilitado."
+        else
+          log "$NAMES_DNSLOCAL não encontrado, habilitando e iniciando..."
+          sudo systemctl enable $NAMES_DNSLOCAL
+          sudo systemctl start $NAMES_DNSLOCAL
+          log "$NAMES_DNSLOCAL habilitado e iniciado."
+        fi
+      fi
     fi
-    if command -v docker &>/dev/null; then
-        docker-compose down 2>/dev/null || true
+
+    ask "Deseja excluir TODOSos containers? [s/N]"
+    if [[ "$input" =~ ^[sS]$ ]]; then
+      docker-compose down -v --remove-orphans
+      docker image prune -a
+      docker volume prune -a
+      docker system prune -a
     fi
+
+    war "Rollback concluído.\n"
+
+    war "Verifique os logs em $logfile para mais detalhes.\n"
+
     exit 1
 }
 
 # Set trap after functions are defined
 trap rollback ERR
 trap 'err "Interrompido pelo usuário."; exit 0' INT
-
-# check requirements
-mapfile -t REQUIREMENTS < <(grep -vE '^\s*(#|$)' "$REQUIREMENTS")
-
-log "Verificando requisitos..."
-
-for cmd in "${REQUIREMENTS[@]}"; do
-    if ! command -v $cmd &>/dev/null; then
-        err "$cmd não encontrado, necessário para prosseguir. Abortando..."
-        exit 1
-    else
-        log "$cmd encontrado."
-    fi
-done
 
 
 log "Verificando conexão com a internet..."
@@ -143,7 +179,7 @@ get_container_info_simple() {
     local ouvindo=$(docker exec "$cname" sh -c 'ss -tuln 2>/dev/null || netstat -tuln 2>/dev/null' 2>/dev/null | awk 'NR>1{print $5}' | awk -F: '{print $NF}' | sort -n | uniq | paste -sd "," -)
     [ -z "$ouvindo" ] && ouvindo="Indisponível"
 
-    printf "IP: %s - Portas mapeadas: %s - Portas ouvindo: %s\n" "$ip" "$portas" "$ouvindo"
+    printf "IP: %s\n" "$ip"
 }
 
 # check dns and disable dns in router
@@ -489,7 +525,7 @@ ask "Selecione [1/3]: "
 
 case "$input" in
     1)
-    DNSMASQ="0"
+    DNSMASQ="2"
     backup_hosts_file="/etc/hosts.backup-$(date +%Y%m%d%H%M%S)"
     cp /etc/hosts "$backup_hosts_file"
     log "Arquivo /etc/hosts original salvo em $backup_hosts_file."
@@ -516,37 +552,39 @@ case "$input" in
 esac
 
 # DNSMASQ_DIR_DEFAULT is a file path. This section handles the dnsmasq configuration file path.
-print "Arquivo de configuração do dnsmasq:\n"
+if [[ $DNSMASQ == "1" ]]; then
+    print "Arquivo de configuração do dnsmasq:\n"
 
-print "1 - Usar caminho padrão: $DNSMASQ_DIR_DEFAULT"
-print "2 - Escolher outro caminho\n"
+    print "1 - Usar caminho padrão: $DNSMASQ_DIR_DEFAULT"
+    print "2 - Escolher outro caminho\n"
 
-ask "Selecione [1/2]: "
+    ask "Selecione [1/2]: "
 
-case "$input" in
-    1)
-    DNSMASQ_DIR="$DNSMASQ_DIR_DEFAULT"
-    log "Caminho do arquivo de configuração dnsmasq selecionado: $DNSMASQ_DIR."
-    ;;
-    2)
-    ask "Digite o caminho completo para o arquivo de configuração do dnsmasq (ex: /opt/meudns/dnsmasq.conf): "
-    if validate_config_dir "$(dirname "$input")"; then # Modified to pass directory to validate_config_dir
-        if [[ "$(basename "$input")" != "dnsmasq.conf" ]]; then
-            err "O nome do arquivo de configuração '$input' não é 'dnsmasq.conf'. Isso pode ser inesperado."
+    case "$input" in
+        1)
+        DNSMASQ_DIR="$DNSMASQ_DIR_DEFAULT"
+        log "Caminho do arquivo de configuração dnsmasq selecionado: $DNSMASQ_DIR."
+        ;;
+        2)
+        ask "Digite o caminho completo para o arquivo de configuração do dnsmasq (ex: /opt/meudns/dnsmasq.conf): "
+        if validate_config_dir "$(dirname "$input")"; then # Modified to pass directory to validate_config_dir
+            if [[ "$(basename "$input")" != "dnsmasq.conf" ]]; then
+                err "O nome do arquivo de configuração '$input' não é 'dnsmasq.conf'. Isso pode ser inesperado."
+                exit 1
+            fi
+            log "Caminho para dnsmasq.conf selecionado: $input."
+        else
+            err "O diretório para o arquivo dnsmasq.conf ('$(dirname "$input")') não é válido ou o arquivo dnsmasq.conf não foi encontrado nele (ver mensagem anterior). Abortando..."
             exit 1
         fi
-        log "Caminho para dnsmasq.conf selecionado: $input."
-    else
-        err "O diretório para o arquivo dnsmasq.conf ('$(dirname "$input")') não é válido ou o arquivo dnsmasq.conf não foi encontrado nele (ver mensagem anterior). Abortando..."
+        DNSMASQ_DIR=$input
+        ;;
+        *)
+        war "Opção inválida. Saindo." >&2
         exit 1
-    fi
-    DNSMASQ_DIR=$input
-    ;;
-    *)
-    war "Opção inválida. Saindo." >&2
-    exit 1
-    ;;
-esac
+        ;;
+    esac  
+fi
 
 print "Porta a ser usada para expor os serviços na web:\n"
 
@@ -713,9 +751,7 @@ print "Gerando configuração..."
 
 sleep 3
 
-printf "\n"
-
-printf "${WHITE}Resumo das Configurações:
+printf "\n${WHITE}Resumo das Configurações:
   Fuso Horário        : "$TZ"
   Domínio             : "$DOMAIN"
   Porta Web           : "$PORT_USED"
@@ -723,7 +759,7 @@ printf "${WHITE}Resumo das Configurações:
   Diretório Sonarr    : "$STORAGE_SONARR"
   Usuário Traefik     : "$USER_TRAEFIK"
   Senha Traefik (cript): "$PASS_TRAEFIK"
-  Ativar DNSMASQ      : "$DNSMASQ" (1=sim, 0=não)
+  Ativar DNSMASQ      : "$DNSMASQ" (0=não, 1=sim, 2=hosts)
   Arquivo DNSMASQ Conf: "$DNSMASQ_DIR"
   ${RESET}
 "
@@ -754,63 +790,99 @@ DOCKER_SERVICES_TO_CHECK="traefik radarr sonarr jellyfin qbittorrent heimdall pr
 
 if [[ $DNSMASQ == "1" ]]; then
   log "DNSMASQ ativado. Configurando..."
-  dns_ip=$(hostname -I | awk '{ print $1} ') # Gets primary IP, might need adjustment for multi-homed hosts
-  mkdir -p "$(dirname "$DNSMASQ_DIR")" # Ensure parent directory for the conf file exists
-  cat > "$DNSMASQ_DIR" <<EOF
-# Configuração DNSMASQ gerada por script
-# Servidores DNS upstream
-server=8.8.8.8
-server=1.1.1.1
-
-# Resoluções locais
-address=/jellyfin.$DOMAIN/$dns_ip
-address=/sonarr.$DOMAIN/$dns_ip
-address=/radarr.$DOMAIN/$dns_ip
-address=/qbittorrent.$DOMAIN/$dns_ip
-address=/heimdall.$DOMAIN/$dns_ip
-address=/traefik.$DOMAIN/$dns_ip
-address=/prowlarr.$DOMAIN/$dns_ip
-
-# Configurações adicionais
-listen-address=0.0.0.0
-# no-daemon # Comentado se executado via Docker, pois o Docker gerencia o daemon. Descomente se executar dnsmasq diretamente.
-# Se o Dockerfile do dnsmasq já executa em foreground, no-daemon pode ser redundante ou causar problemas.
-# Verifique a configuração do contêiner dnsmasq.
-EOF
-  print "Arquivo de configuração do dnsmasq '$DNSMASQ_DIR' gerado."
+  
   print "Iniciando os contêineres (perfil 'dns' ativo)..."
 
   docker-compose pull $DOCKER_SERVICES_TO_CHECK
 
   check_local_dns
 
-  if docker-compose --profile dns up -d; then
+  if docker-compose up -d; then
     log "Contêineres iniciados com sucesso."
+    log "Aguardando alguns segundos para que os contêineres iniciem..."
+    sleep 10
+    mkdir -p "$(dirname "$DNSMASQ_DIR")" # Ensure parent directory for the conf file exists
+    cat > "$DNSMASQ_DIR" <<EOF
+# Configuração DNSMASQ gerada por script
+# Servidores DNS upstream
+server=8.8.8.8
+server=1.1.1.1
+
+# Configurações básicas
+listen-address=0.0.0.0
+domain-needed
+bogus-priv
+no-resolv
+no-poll
+expand-hosts
+cache-size=1000
+log-queries
+log-facility=/dev/stdout
+
+# Domínio local
+domain=$DOMAIN
+local=/$DOMAIN/
+
+# Resoluções locais
+EOF
+
+    # Adiciona as entradas de DNS para cada serviço
+    for service in $DOCKER_SERVICES_TO_CHECK; do
+      if [[ "$service" == "dnsmasq" ]]; then continue; fi
+      # Ajusta o nome do container para whoami-traefik
+      container_name="$service"
+      if [[ "$service" == "whoami" ]]; then
+        container_name="whoami-traefik"
+      fi
+      service_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name")
+      echo "address=/$service.$DOMAIN/$service_ip" >> "$DNSMASQ_DIR"
+      log "Adicionado: /$service.$DOMAIN/$service_ip ao arquivo de configuração do dnsmasq."
+    done
+
+    log "Arquivo de configuração do dnsmasq '$DNSMASQ_DIR' gerado."
+    if ! docker-compose --profile dns up -d; then
+      err "Erro ao iniciar o dnsmasq."
+      return 1
+    fi
+    log "Aguardando alguns segundos para que o dnsmasq inicie..."
+    sleep 3
+
+    log "Verificando status do contêiner dnsmasq..."
+    if docker ps --filter "status=running" --format "{{.Names}}" | grep -q "dnsmasq"; then
+      log "Contêiner dnsmasq está em execução."
+    else
+      err "Contêiner dnsmasq não está em execução."
+      return 1
+    fi
+
+    for service in $DOCKER_SERVICES_TO_CHECK.$DOMAIN ; do
+      docker exec -it dnsmasq sh -c "echo '$service' >> /etc/hosts"
+      log "Adicionado: $service ao arquivo de configuração do /etc/hosts do dnsmasq."
+    done
+
+    # Verifica a resolução DNS para cada serviço
+    for service in $DOCKER_SERVICES_TO_CHECK; do
+      if [[ "$service" == "dnsmasq" ]]; then continue; fi
+      container_name="$service"
+      if [[ "$service" == "whoami" ]]; then
+        container_name="whoami-traefik"
+      fi
+      service_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name")
+      dnsmasq_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' dnsmasq)
+      print "Verificando resolução DNS para "$service.$DOMAIN" via $dnsmasq_ip..."
+      if dig +short "$service.$DOMAIN" "@$dnsmasq_ip" | grep -q "$service_ip"; then
+        log "Serviço $service.$DOMAIN resolvido com sucesso para $service_ip."
+      else
+        war "Serviço $service.$DOMAIN não foi resolvido corretamente via $dnsmasq_ip (esperado: $service_ip)."
+        return 1
+      fi
+    done
+    log "Resolução DNS verificada com sucesso."
+    echo "nameserver $dnsmasq_ip" >> /etc/resolv.conf
   else
     err "Erro ao iniciar os contêineres."
-    docker-compose down -v --remove-orphans
-    systemctl restart $NAMES_DNSLOCAL
-    exit 1
+    return 1
   fi
-
-  print "Aguardando alguns segundos para que os contêineres iniciem..."
-  sleep 10
-  log "Verificando status do contêiner dnsmasq..."
-  if docker ps --filter "status=running" --format "{{.Names}}" | grep -q "dnsmasq"; then # Adjust grep if name is different
-      print "Contêiner dnsmasq está em execução."
-  else
-      war "Contêiner dnsmasq não está em execução."
-  fi
-
-  for service in $DOCKER_SERVICES_TO_CHECK; do
-    print "Verificando resolução DNS para "$service.$DOMAIN" via "$dns_ip"..."
-    if dig +short "$service.$DOMAIN" "@$dns_ip" | grep -q "$dns_ip"; then
-      print "Serviço $service.$DOMAIN resolvido com sucesso para $dns_ip."
-    else
-      war "Serviço $service.$DOMAIN não foi resolvido corretamente via $dns_ip (esperado: $dns_ip)."
-      systemctl restart $service
-    fi
-  done
 else
   log "DNSMASQ desativado. Iniciando os contêineres (sem perfil 'dns')..."
   docker-compose up -d
@@ -829,7 +901,7 @@ else
   done
 fi
 
-print "\nInicialização concluída!"
+print "Inicialização concluída!\n"
 print "Para acessar os serviços, utilize os seguintes endereços (substitua "$DOMAIN" e "$PORT_USED" se necessário):"
 print "Exemplos (protocolo http:// assumido, ajuste para https:// se "$PORT_USED" for :443 e SSL estiver configurado):"
 print "  Jellyfin   : http://jellyfin.$DOMAIN$PORT_USED -$(get_container_info_simple "jellyfin")"
@@ -838,7 +910,7 @@ print "  Radarr     : http://radarr.$DOMAIN$PORT_USED - $(get_container_info_sim
 print "  qBittorrent: http://qbittorrent.$DOMAIN$PORT_USED - $(get_container_info_simple "qbittorrent")"
 print "  Heimdall   : http://heimdall.$DOMAIN$PORT_USED - $(get_container_info_simple "heimdall")"
 print "  Traefik    : http://traefik.$DOMAIN$PORT_USED (dashboard) - $(get_container_info_simple "traefik")"
-print "\nLembre-se de que a resolução de DNS pode levar alguns instantes para propagar ou pode requerer limpeza de cache DNS no seu sistema."
+print "Lembre-se de que a resolução de DNS pode levar alguns instantes para propagar ou pode requerer limpeza de cache DNS no seu sistema."
 print "Log do script: "$logfile" \n"
 
 # Handle post-installation configuration
@@ -916,6 +988,6 @@ EOF
 
 save_credentials
 
-print "\n${GREEN}Instalação concluída com sucesso!${RESET}"
+print "${GREEN}Instalação concluída com sucesso!${RESET}\n"
 
 exit 0

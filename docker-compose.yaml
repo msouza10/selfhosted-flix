@@ -187,13 +187,18 @@ services:
         max-file: "3"
 
   dnsmasq:
-    image: strm/dnsmasq
+    image: dockurr/dnsmasq
     container_name: dnsmasq
     profiles: ["dns"]
+    environment:
+      - DNS1=1.0.0.1
+      - DNS2=1.1.1.1
     ports:
-      - "53:53/udp"
+      - 53:53/udp
+      - 53:53/tcp
+      - 5380:8080/tcp
     volumes:
-      - ${DNSMASQ_DIR}:/etc/dnsmasq.conf
+      - ${DNSMASQ_DIR}:/etc/dnsmasq.d/dnsmasq.conf:ro
     restart: unless-stopped
     networks:
       - traefik_net

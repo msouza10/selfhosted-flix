@@ -60,6 +60,7 @@ ask "Selecione uma opção [1/2]: "
 if [[ "$input" =~ ^[1]$ ]]; then
     print "A senha não será fixa, você deve verificar a senha no log do container qbittorrent toda a vez que reinicializar"
     print "Senha gerada: $(docker logs qbittorrent | grep "The WebUI administrator password" | tail -n 1 | awk '{print $16}')"
+
 else
     ask_secret "Digite a senha para o qbittorrent: "
     print "Senha gerada: $input"
@@ -175,34 +176,6 @@ else
     print "Senha configurada com sucesso!"
 fi
 
-
-# summary of configurations
-print "\n=== Resumo das Configurações ==="
-print "qBittorrent:"
-print "  Usuario: $qbittorrent_user"
-print "  Senha: $qbittorrent_pass"
-print "  IP: $qbittorrent_ip"
-
-print "\nSonarr:"
-print "  Usuario: $sonarr_user"
-print "  Senha: $sonarr_pass"
-print "  IP: $sonarr_ip"
-
-print "\nRadarr:"
-print "  Usuario: $radarr_user"
-print "  Senha: $radarr_pass"
-print "  API Key: $radarr_api"
-print "  IP: $radarr_ip"
-
-print "\nProwlarr:"
-print "  Usuario: $prowlarr_user"
-print "  Senha: $prowlarr_pass"
-print "  API Key: $prowlarr_api"
-print "  IP: $prowlarr_ip"
-
-print "\nHeimdall IP: $heimdall_ip"
-print "Traefik IP: $traefik_ip"
-
 # exporting variables for use in other scripts
 export qbittorrent_user qbittorrent_pass qbittorrent_ip
 export sonarr_user sonarr_pass sonarr_ip
@@ -212,16 +185,17 @@ export heimdall_ip traefik_ip
 
 log "Configuração das credenciais concluída com sucesso!"
 
-# saving config file for future reference
-config_file="services_config.env"
-mkdir -p configs
-
-cat > "$config_file" << EOF
+save_credentials_services() {
+    local cred_services_file="/opt/selfhosted-flix/.credentials_services"
+    mkdir -p "$(dirname "$cred_services_file")"
+    touch "$cred_services_file"
+    chmod 600 "$cred_services_file"
+    cat > "$cred_services_file" << EOF
 # Configurações dos Serviços - Gerado em $(date)
 
 # qBittorrent
 QBITTORRENT_USER="$qbittorrent_user"
-QBITTORRENT_PASS="$qbittorrent_pass"
+QBITTORRENT_PASS="$qbittorrent_pass_fixed"
 QBITTORRENT_IP="$qbittorrent_ip"
 
 # Sonarr
@@ -246,8 +220,8 @@ HEIMDALL_IP="$heimdall_ip"
 TRAEFIK_IP="$traefik_ip"
 EOF
 
-all_args=("$qbittorrent_user" "$qbittorrent_pass" "$qbittorrent_ip" "$sonarr_user" "$sonarr_pass" "$sonarr_ip" "$radarr_user" "$radarr_pass" "$radarr_api" "$radarr_ip" "$prowlarr_user" "$prowlarr_pass" "$prowlarr_api" "$prowlarr_ip" "$heimdall_ip" "$traefik_ip")
+log "Configurações salvas em: $cred_services_file"
+}
 
-print "Configurações salvas em: $config_file"
-print "Você pode consultar este arquivo para verificar as credenciais configuradas."
+save_credentials_services
 

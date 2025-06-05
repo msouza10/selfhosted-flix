@@ -10,7 +10,7 @@ sleep 1
 print "1..."
 sleep 1
 
-info "buildando imagem do heimdall..."
+log "buildando imagem do heimdall..."
 
 if grep -q ".lan/" configs/heimdall/config_heimdall.sql; then
     sed -i "s/.replace_domain/.$DOMAIN/\g" configs/heimdall/config_heimdall.sql
