@@ -372,13 +372,10 @@ fi
 
 # inicialization
 print "Iniciando script..."
-sleep 1
-print "1..."
-sleep 1
-print "2..."
-sleep 1
-print "3..."
-sleep 1
+for i in {3..1}; do
+    print "$i"
+    sleep 1
+done
 
 # check if there are banners in the banners directory
 if [[ -d $BANNER_DIR ]] && find "$BANNER_DIR" -type f | grep -q .; then
@@ -445,7 +442,7 @@ if [[ "$goto_config_generation" == false ]]; then
     print "Configuração interativa ativada..."
 fi
 
-sleep 3
+sleep 1
 clear
 
 print "Fuso horário a ser utilizado:\n"
@@ -878,7 +875,13 @@ EOF
       fi
     done
     log "Resolução DNS verificada com sucesso."
-    echo "nameserver $dnsmasq_ip" >> /etc/resolv.conf
+
+    if [[ -f /etc/resolv.conf ]]; then
+      cp /etc/resolv.conf /etc/resolv.conf.bak
+      log "Backup do /etc/resolv.conf criado em /etc/resolv.conf.bak"
+    fi
+    echo "nameserver $dnsmasq_ip" > /etc/resolv.conf
+    log "Configurado nameserver $dnsmasq_ip no /etc/resolv.conf"
   else
     err "Erro ao iniciar os contêineres."
     return 1
@@ -904,12 +907,12 @@ fi
 print "Inicialização concluída!\n"
 print "Para acessar os serviços, utilize os seguintes endereços (substitua "$DOMAIN" e "$PORT_USED" se necessário):"
 print "Exemplos (protocolo http:// assumido, ajuste para https:// se "$PORT_USED" for :443 e SSL estiver configurado):"
-print "  Jellyfin   : http://jellyfin.$DOMAIN$PORT_USED -$(get_container_info_simple "jellyfin")"
-print "  Sonarr     : http://sonarr.$DOMAIN$PORT_USED - $(get_container_info_simple "sonarr")"
-print "  Radarr     : http://radarr.$DOMAIN$PORT_USED - $(get_container_info_simple "radarr")"
-print "  qBittorrent: http://qbittorrent.$DOMAIN$PORT_USED - $(get_container_info_simple "qbittorrent")"
-print "  Heimdall   : http://heimdall.$DOMAIN$PORT_USED - $(get_container_info_simple "heimdall")"
-print "  Traefik    : http://traefik.$DOMAIN$PORT_USED (dashboard) - $(get_container_info_simple "traefik")"
+print "  Jellyfin   : http://jellyfin.$DOMAIN:$PORT_USED -$(get_container_info_simple "jellyfin")"
+print "  Sonarr     : http://sonarr.$DOMAIN:$PORT_USED - $(get_container_info_simple "sonarr")"
+print "  Radarr     : http://radarr.$DOMAIN:$PORT_USED - $(get_container_info_simple "radarr")"
+print "  qBittorrent: http://qbittorrent.$DOMAIN:$PORT_USED - $(get_container_info_simple "qbittorrent")"
+print "  Heimdall   : http://heimdall.$DOMAIN:$PORT_USED - $(get_container_info_simple "heimdall")"
+print "  Traefik    : http://traefik.$DOMAIN:$PORT_USED (dashboard) - $(get_container_info_simple "traefik")"
 print "Lembre-se de que a resolução de DNS pode levar alguns instantes para propagar ou pode requerer limpeza de cache DNS no seu sistema."
 print "Log do script: "$logfile" \n"
 

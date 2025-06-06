@@ -95,7 +95,14 @@ if sqlite3 configs/prowlarr.db "UPDATE DownloadClient SET DownloadClients = repl
     print "IP do qbittorrent adicionado com sucesso! $qbittorrent_ip"
 else
     err "Erro ao adicionar o IP do qbittorrent!"
-    war "adicione o IP manualmente no banco de dados do prowlarr"
+    war "Caso nao queira adicionar o IP do qbittorrent, pode continuar o script e adicionar manualmente no prowlarr"
+    ask "Deseja continuar? [s/N]: "
+    if [[ "$input" =~ ^[sS]$ ]]; then
+        war "adicione o IP manualmente no banco de dados do prowlarr"
+    else
+        err "script encerrado."
+        exit 1
+    fi
 fi
 
 print "dados do qbittorrent adicionados com sucesso!"
@@ -139,6 +146,7 @@ if [[ -z "$radarr_api" ]]; then
     sqlite3 configs/prowlarr.db "UPDATE DownloadClient SET Applications = replace(Applications, 'radarr_api', '$radarr_api') where Applications like '%radarr_api%'"
 else
     war "api nao setada, por isso nao sera adicionada ao banco de dados do prowlarr"
+    war "Caso nao queira adicionar a api do radarr, pode continuar o script e adicionar manualmente no prowlarr"
     ask "Deseja continuar? [s/N]: "
     if [[ "$input" =~ ^[sS]$ ]]; then
         print "Continuando..."
@@ -153,6 +161,7 @@ if [[ -z "$radarr_ip" ]]; then
     sqlite3 configs/prowlarr.db "UPDATE DownloadClient SET Applications = replace(Applications, 'radarr_ip', '$radarr_ip') where Applications like '%radarr_ip%'"
 else
     war "ip nao identificado, por isso nao sera adicionado ao banco de dados do prowlarr"
+    war "Caso nao queira adicionar o IP do radarr, pode continuar o script e adicionar manualmente no prowlarr"
     ask "Deseja continuar? [s/N]: "
     if [[ "$input" =~ ^[sS]$ ]]; then
         print "Continuando..."
@@ -171,6 +180,7 @@ if [[ -z "$sonarr_api" ]]; then
     sqlite3 configs/prowlarr.db "UPDATE DownloadClient SET Applications = replace(Applications, 'sonarr_api', '$sonarr_api') where Applications like '%sonarr_api%'"
 else
     war "api nao setada, por isso nao sera adicionada ao banco de dados do prowlarr"
+    war "Caso nao queira adicionar a api do sonarr, pode continuar o script e adicionar manualmente no prowlarr"
     ask "Deseja continuar? [s/N]: "
     if [[ "$input" =~ ^[sS]$ ]]; then
         print "Continuando..."
@@ -185,6 +195,7 @@ if [[ -z "$sonarr_ip" ]]; then
     sqlite3 configs/prowlarr.db "UPDATE DownloadClient SET Applications = replace(Applications, 'sonarr_ip', '$sonarr_ip') where Applications like '%sonarr_ip%'"
 else
     war "ip nao identificado, por isso nao sera adicionado ao banco de dados do prowlarr"
+    war "Caso nao queira adicionar o IP do sonarr, pode continuar o script e adicionar manualmente no prowlarr"
     ask "Deseja continuar? [s/N]: "
     if [[ "$input" =~ ^[sS]$ ]]; then
         print "Continuando..."

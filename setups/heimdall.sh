@@ -2,13 +2,10 @@
 
 print "Iniciando setup do heimdall..."
 
-sleep 1
-print "3..."
-sleep 1
-print "2..."
-sleep 1
-print "1..."
-sleep 1
+for i in {3..1}; do
+    print "$i"
+    sleep 1
+done
 
 log "buildando imagem do heimdall..."
 
@@ -41,7 +38,7 @@ fi
 war "Realizando backup dos aplicativos suportados pelo heimdall..."
 
 if [[ "$backup" == "1" ]]; then
-    if sqlite3 $path/$struture/app.sqlite ".dump" > /opt/backup/heimdall/app.sqlite-$(date +%Y%m%d%H%M%S).sql; then
+    if sqlite3 $heimdall_path/$data_path/app.sqlite ".dump" > /opt/backup/heimdall/app.sqlite-$(date +%Y%m%d%H%M%S).sql; then
         log "Backup realizado com sucesso em /opt/backup/heimdall/app.sqlite-$(date +%Y%m%d%H%M%S).sql"
     else
         err "Erro ao realizar o backup."
@@ -51,13 +48,13 @@ fi
 
 log "Instalando novas configuracoes do heimdall..."
 
-if sqlite3 $path/$struture/app.sqlite ".dump" < configs/heimdall/app.sqlite; then
+if sqlite3 $heimdall_path/$data_path/app.sqlite ".dump" < configs/heimdall/app.sqlite; then
     log "Configuracoes instaladas com sucesso."
 else
     war "Erro ao instalar configuracoes."
     if [[ "$backup" == "1" ]]; then
         if ask "Deseja restaurar o backup? [s/N]: "; then
-            if sqlite3 $path/$struture/app.sqlite ".dump" > /opt/backup/heimdall/app.sqlite-$(date +%Y%m%d%H%M%S).sql; then
+            if sqlite3 $heimdall_path/$data_path/app.sqlite ".dump" > /opt/backup/heimdall/app.sqlite-$(date +%Y%m%d%H%M%S).sql; then
                 log "Backup restaurado com sucesso."
             else
                 war "Erro ao restaurar o backup."
