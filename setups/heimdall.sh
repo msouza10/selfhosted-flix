@@ -9,7 +9,7 @@ for i in {3..1}; do
     sleep 1
 done
 
-log "buildando imagem do heimdall..."
+log "backup do banco de dados do heimdall template..."
 
 
 if [ -f "$PWD/configs/heimdall/app.sql" ]; then
@@ -25,10 +25,6 @@ else
     exit 1
 fi
 
-if grep -q ".lan/" $PWD/configs/heimdall/app.sql; then
-    sed -i "s/.replace_domain/.$DOMAIN/\g" $PWD/configs/heimdall/app.sql
-fi
-
 war "Realizando backup do banco de dados do heimdall..."
 
 if sqlite3 $heimdall_path/$data_path/app.sqlite ".dump" > /opt/backup/heimdall/app.sqlite-$date_backup.sql; then
@@ -40,8 +36,11 @@ fi
 
 log "Instalando novas configuracoes do heimdall..."
 
-if grep -q "replace_domain" $PWD/configs/heimdall/app.sql; then
-    sed -i "s/replace_domain/.$DOMAIN/\g" $PWD/configs/heimdall/app.sql
+if grep -q "replace_domain" "$PWD/configs/heimdall/app.sql"; then
+    sed -i "s|replace_domain|$DOMAIN|g" "$PWD/configs/heimdall/app.sql"
+    log "Placeholder 'replace_domain' substituído por '$DOMAIN' em $PWD/configs/heimdall/app.sql."
+else
+    war "Placeholder 'replace_domain' não encontrado em $PWD/configs/heimdall/app.sql. Nenhuma substituição de domínio realizada."
 fi
 
 if sqlite3 $PWD/configs/heimdall/app.sqlite ".read $PWD/configs/heimdall/app.sql"; then
