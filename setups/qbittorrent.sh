@@ -23,30 +23,13 @@ checking_qbittorrent_credentials() {
     fi
 }
 
-if [[ -f "configs/qBittorrent.conf.backup" ]]; then
-    print "Backup do arquivo de configuracao do qbittorrent encontrado: configs/qBittorrent.conf.backup"
+# creating backup of qbittorrent.conf
+if [[ -f "/opt/backup/qbittorrent/qBittorrent.conf.backup" ]]; then
+    print "Backup do arquivo de configuracao do qbittorrent encontrado: /opt/backup/qbittorrent/qBittorrent.conf.backup"
 else
     print "Criando backup do arquivo de configuracao do qbittorrent..."
-    cp configs/qBittorrent.conf configs/qBittorrent.conf.backup
+    cp $qbittorrent_path/$data_path/qBittorrent.conf /opt/backup/qbittorrent/qBittorrent.conf
 fi
-
-
-# creating backup of qbittorrent-data.conf
-if [[ -f "$qbittorrent_path/$data_path/qBittorrent.conf" ]]; then
-    print "Backup do arquivo de configuracao do qbittorrent encontrado: $qbittorrent_path/$data_path/qBittorrent.conf"
-    ask "Deseja sobrescrever o backup? [s/N]: "
-    if [[ "$input" =~ ^[sS]$ ]]; then
-        print "Sobrescrevendo backup do arquivo de configuracao do qbittorrent..."
-        cp "$qbittorrent_path/$data_path/qBittorrent.conf" "$backup_dir/qbittorrent/qBittorrent.conf"
-    else
-        print "Backup do arquivo de configuracao do qbittorrent não sobrescrito!"
-    fi
-else
-    war "Backup do arquivo de configuracao do qbittorrent não encontrado: $qbittorrent_path/$data_path/qBittorrent.conf"
-    print "Criando backup do arquivo de configuracao do qbittorrent..."
-    cp "$qbittorrent_path/$data_path/qBittorrent.conf" "$backup_dir/qbittorrent/qBittorrent.conf"
-fi
-
 
 print "Configurando o qbittorrent..."
 
@@ -62,18 +45,17 @@ if [ -z "$qbittorrent_pass" ]; then
     print "Senha personalizada em texto pleno: $qbittorrent_pass_fixed"
     print "Senha personalizada em hash+salt: $qbittorrent_pass"
     echo "WebUI\Password_PBKDF2="@ByteArray($qbittorrent_pass)"" >> $qbittorrent_path/$data_path/qBittorrent.conf
-    docker restart qbittorrent
-    checking_qbittorrent_credentials
-    
+    docker restart qbittorrent   
 else
     print "Senha default: $(docker logs qbittorrent | grep "The WebUI administrator password" | tail -n 1 | awk '{print $16}')"
     war "Utilize ele para logar no qbittorrent, lembrando que a senha não será fixa, você deve verificar a senha no log do container qbittorrent toda a vez que reinicializar."
     war "Tambem sera necessario configurar manualmente a senha no sonarr e radarr"
+    exit 1
 fi
 
 print "Configurado com sucesso!"
 
-if mv configs/qBittorrent.conf $qbittorrent_path/$data_path/qBittorrent.conf; then
+if mv $PWD/configs/qBittorrent.conf $qbittorrent_path/$data_path/qBittorrent.conf; then
     print "Arquivo de configuracao do qbittorrent movido com sucesso!"
     if checking_qbittorrent_credentials; then
         print "Credenciais do qbittorrent configuradas com sucesso!"
