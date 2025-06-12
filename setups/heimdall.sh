@@ -57,7 +57,7 @@ else
     exit 1
 fi
 
-if mv $PWD/configs/heimdall/app.sql $heimdall_path/$data_path/app.sqlite; then
+if mv $PWD/configs/heimdall/app.sqlite $heimdall_path/$data_path/app.sqlite; then
     print "arquivo de configuracao do heimdall movido com sucesso!"
 else
     err "Erro ao mover o arquivo de configuracao do heimdall!"
@@ -76,6 +76,8 @@ fi
 
 if docker ps --filter "name=heimdall" --filter status="running" --format "{{.Names}}"; then
     log "Heimdall rodando com sucesso."
+    mv $PWD/configs/heimdall/app.sql.bak $PWD/configs/heimdall/app.sql
+    log "Arquivo de configuracao template do heimdall restaurado com sucesso para futura utilizacao."
 else
     err "Heimdall não está rodando."
     exit 1

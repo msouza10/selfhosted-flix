@@ -90,7 +90,7 @@ rollback() {
         log "$NAMES_DNSLOCAL não está ativo, e sera reiniciado."
         if [[ "$NAMES_DNSLOCAL" == "systemd-resolve" ]]; then
           log "systemd-resolved encontrado, habilitando..."
-          sudo systemctl start systemd-resolved
+          sudo systemctl restart systemd-resolved
           sudo systemctl enable systemd-resolved
           log "systemd-resolved habilitado."
         else
@@ -102,7 +102,7 @@ rollback() {
       fi
     fi
 
-    ask "Deseja excluir TODOSos containers? [s/N]"
+    ask "Deseja excluir TODOS os containers? [s/N]"
     if [[ "$input" =~ ^[sS]$ ]]; then
       docker-compose down -v --remove-orphans
       docker image prune -a
