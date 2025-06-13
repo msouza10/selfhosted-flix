@@ -66,9 +66,9 @@ else
     ask_secret "Digite a senha para o qbittorrent: "
     log "Senha gerada: $input"
     qbittorrent_pass_fixed="$input"
-    salt_qbittorrent="$(python3 based/salt_gen.py --gensalt)"
     hash_qbittorrent="$(python3 based/salt_gen.py --hash "$input")"
-    qbittorrent_pass="$input:$hash_qbittorrent"
+    qbittorrent_pass="$hash_qbittorrent"
+    log "Senha em hash+salt: $qbittorrent_pass"
     log "Senha configurada com sucesso!"
 fi
 
@@ -186,7 +186,7 @@ fi
 
 # check if all variables are set
 for var in "${all_vars[@]}"; do
-    print "Verificando variável: $var"
+    log "Verificando variável: $var"
     if [ -z "$var" ]; then
         err "Variável não encontrada: $var"
         ask "Deseja continuar? [s/n]: "
@@ -249,4 +249,3 @@ log "Configurações salvas em: $cred_services_file"
 }
 
 save_credentials_services
-

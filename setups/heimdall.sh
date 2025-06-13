@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-print "Iniciando setup do heimdall..."
+log "Iniciando setup do heimdall..."
 
 date_backup=$(date +%Y%m%d%H%M%S)
 
@@ -13,9 +13,9 @@ log "backup do banco de dados do heimdall template..."
 
 
 if [ -f "$PWD/configs/heimdall/app.sql" ]; then
-    print "Arquivo de configuracao do heimdall encontrado: $PWD/configs/heimdall/app.sql"
+    log "Arquivo de configuracao do heimdall encontrado: $PWD/configs/heimdall/app.sql"
     if cp $PWD/configs/heimdall/app.sql $PWD/configs/heimdall/app.sql.bak; then
-        print "Arquivo de configuracao do heimdall copiado com sucesso para $PWD/configs/heimdall/app.sql.bak"
+        log "Arquivo de configuracao do heimdall copiado com sucesso para $PWD/configs/heimdall/app.sql.bak"
     else
         err "Erro ao copiar o arquivo de configuracao do heimdall."
         exit 1
@@ -44,9 +44,9 @@ else
 fi
 
 if sqlite3 $PWD/configs/heimdall/app.sqlite ".read $PWD/configs/heimdall/app.sql"; then
-    print "banco de dados do heimdall atualizado com sucesso!"
+    log "banco de dados do heimdall atualizado com sucesso!"
     if sqlite3 $PWD/configs/heimdall/app.sqlite "PRAGMA integrity_check"; then
-        print "integridade do banco de dados do heimdall ok!"
+        log "integridade do banco de dados do heimdall ok!"
     else
         err "Erro ao verificar a integridade do banco de dados do heimdall!"
         exit 1
@@ -58,7 +58,7 @@ else
 fi
 
 if mv $PWD/configs/heimdall/app.sqlite $heimdall_path/$data_path/app.sqlite; then
-    print "arquivo de configuracao do heimdall movido com sucesso!"
+    log "arquivo de configuracao do heimdall movido com sucesso!"
 else
     err "Erro ao mover o arquivo de configuracao do heimdall!"
     err "Verifique se o arquivo de configuracao existe e se tem permissão de escrita"
