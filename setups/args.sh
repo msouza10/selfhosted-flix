@@ -13,7 +13,7 @@ radarr_api="$(awk -F'[<>]' '/<ApiKey>/ { print $3 }' "$radarr_path/$data_path/co
 prowlarr_api="$(awk -F'[<>]' '/<ApiKey>/ { print $3 }' "$prowlarr_path/$data_path/config.xml")"
 
 # ips of services
-qbittorrent_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep traefik | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
+qbittorrent_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep qbittorrent | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
 sonarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep sonarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
 prowlarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep prowlarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"
 radarr_ip="$(docker ps -q | xargs -r docker inspect -f '{{.Name}} - IP: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | grep radarr | head -n 1 | cut -d : -f2 | tr -d '[:space:]')"

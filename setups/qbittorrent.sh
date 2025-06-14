@@ -73,7 +73,8 @@ log "Checando se o arquivo de configuracao do qbittorrent foi criado com sucesso
 
 if mv $PWD/configs/qbittorrent/qBittorrent.conf.backup $qbittorrent_path/$data_path/qBittorrent/qBittorrent.conf; then
     log "Arquivo de configuracao do qbittorrent movido com sucesso!"
-    docker restart qbittorrent 
+    docker restart qbittorrent
+    sleep 4
     log "Reiniciando o container qbittorrent..."
     if checking_qbittorrent_credentials; then
         log "Credenciais do qbittorrent configuradas com sucesso!"
