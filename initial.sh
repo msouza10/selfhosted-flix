@@ -90,13 +90,13 @@ rollback() {
         log "$NAMES_DNSLOCAL não está ativo, e sera reiniciado."
         if [[ "$NAMES_DNSLOCAL" == "systemd-resolve" ]]; then
           log "systemd-resolved encontrado, habilitando..."
-          sudo systemctl restart systemd-resolved
-          sudo systemctl enable systemd-resolved
+          systemctl enable systemd-resolved
+          systemctl restart systemd-resolved
           log "systemd-resolved habilitado."
         else
           log "$NAMES_DNSLOCAL não encontrado, habilitando e iniciando..."
-          sudo systemctl enable $NAMES_DNSLOCAL
-          sudo systemctl start $NAMES_DNSLOCAL
+          systemctl enable $NAMES_DNSLOCAL
+          systemctl start $NAMES_DNSLOCAL
           log "$NAMES_DNSLOCAL habilitado e iniciado."
         fi
       fi
@@ -105,9 +105,6 @@ rollback() {
     ask "Deseja excluir TODOS os containers? [s/N]"
     if [[ "$input" =~ ^[sS]$ ]]; then
       docker-compose down -v --remove-orphans
-      docker image prune -a
-      docker volume prune -a
-      docker system prune -a
     fi
 
     war "Rollback concluído.\n"
