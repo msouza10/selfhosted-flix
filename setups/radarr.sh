@@ -47,20 +47,20 @@ log "Adicionando dados do qbittorrent ao banco de dados do radarr..."
 
 if [[ $qbittorrent_user == "admin" ]]; then
     log "usuario default: $qbittorrent_user, para uso no banco de dados do radarr"
-    sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET DownloadClients = replace(DownloadClients, 'qbittorrent_user', '$qbittorrent_user') where DownloadClients like '%qbittorrent_user%'"
+    sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_user', '$qbittorrent_user') where Settings like '%qbittorrent_user%'"
 else
     log "usuario personalizado: $qbittorrent_user, para uso no banco de dados do radarr"
-    sqlite3 $PWD/configs/radarr/radarr.db"UPDATE DownloadClients SET DownloadClients = replace(DownloadClients, 'qbittorrent_user', '$qbittorrent_user') where DownloadClients like '%qbittorrent_user%'"
+    sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_user', '$qbittorrent_user') where Settings like '%qbittorrent_user%'"
 fi
 
 if [[ -z $qbittorrent_pass_fixed ]]; then
     log "senha default: $qbittorrent_pass_fixed, para uso no banco de dados do radarr"
-    sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET DownloadClients = replace(DownloadClients, 'qbittorrent_pass', '$qbittorrent_pass') where DownloadClients like '%qbittorrent_pass%'"
+    sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_pass', '$qbittorrent_pass') where Settings like '%qbittorrent_pass%'"
 else
     war "A senha nao esta fixa por isso sera necessario configurar manualmente a senha no radarr"
 fi
 
-if sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET DownloadClients = replace(DownloadClients, 'qbittorrent_ip', '$qbittorrent_ip') where DownloadClients like '%qbittorrent_ip%'" ; then
+if sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_ip', '$qbittorrent_ip') where Settings like '%qbittorrent_ip%'" ; then
     log "IP do qbittorrent adicionado com sucesso! $qbittorrent_ip"
 else
     err "Erro ao adicionar o IP do qbittorrent!"
@@ -82,16 +82,17 @@ else
     sqlite3 $PWD/configs/radarr/radarr.db "UPDATE Users SET Password = '$radarr_pass' WHERE Id = 1"
 fi
 
-print "dados do radarr adicionados com sucesso!"
+log "dados do radarr adicionados com sucesso!"
 
-print "verificando integridade do banco de dados template do radarr antes de mover para o radarr..."
+log "verificando integridade do banco de dados template do radarr antes de mover para o radarr..."
 
 if sqlite3 $PWD/configs/radarr/radarr.db "PRAGMA integrity_check"; then
-    print "integridade do banco de dados template do radarr ok!"
+    log "integridade do banco de dados template do radarr ok!"
     if mv "$PWD/configs/radarr/radarr.db" "$radarr_path/$data_path/radarr.db"; then
-        print "banco de dados template do radarr movido com sucesso!"
+        log "banco de dados template do radarr movido com sucesso!"
+        docker restart radarr
         if mv "$PWD/configs/radarr/config.xml" "$radarr_path/$data_path/config.xml"; then
-            print "arquivo de configuracao template do radarr movido com sucesso!"
+            log "arquivo de configuracao template do radarr movido com sucesso!"
         else
             err "Erro ao mover o arquivo de configuracao template do radarr!"
             err "Verifique se o arquivo de configuracao existe e se tem permissão de escrita"
@@ -109,7 +110,7 @@ else
 fi
 
 if mv $PWD/configs/radarr/radarr.db.backup $PWD/configs/radarr/radarr.db; then
-    print "banco de dados template do radarr restaurado com sucesso!"
+    log "banco de dados template do radarr restaurado com sucesso!"
 else
     err "Erro ao restaurar o banco de dados template do radarr!"
     err "Verifique se o arquivo de banco de dados backup existe e se tem permissão de escrita"

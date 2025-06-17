@@ -47,11 +47,9 @@ for cmd in "${REQUIREMENTS[@]}"; do
     fi
 done
 
-
-
 # variables
 BANNER_DIR="banners/ascii_fonts"
-SERVICES_HOSTS="traefik radarr sonarr jellyfin qbittorrent dnsmasq heimdall"
+SERVICES_HOSTS="traefik radarr sonarr jellyfin qbittorrent dnsmasq heimdall prowlarr dnsmasq whoami watchtower"
 DOCKER_ROOT_DIR="$(docker info | grep "Docker Root Dir" | awk '{print $4}')"
 
 # variables for env
@@ -74,6 +72,11 @@ QUIET_MODE=false
 rollback() {
 
     war "Iniciando rollback..."
+
+    ask "Deseja excluir TODOS os containers? [s/N]"
+    if [[ "$input" =~ ^[sS]$ ]]; then
+      docker-compose down -v --remove-orphans
+    fi
 
     if [[ "$DNSMASQ" -gt 1 ]]; then
       if [[ -f "$backup_hosts_file" ]]; then
@@ -102,13 +105,7 @@ rollback() {
       fi
     fi
 
-    ask "Deseja excluir TODOS os containers? [s/N]"
-    if [[ "$input" =~ ^[sS]$ ]]; then
-      docker-compose down -v --remove-orphans
-    fi
-
     war "Rollback concluído.\n"
-
     war "Verifique os logs em $logfile para mais detalhes.\n"
 
     exit 1
@@ -780,14 +777,12 @@ EOF
 
 print "Arquivo .env gerado com sucesso."
 
-DOCKER_SERVICES_TO_CHECK="traefik radarr sonarr jellyfin qbittorrent heimdall prowlarr dnsmasq whoami watchtower"
-
 if [[ $DNSMASQ == "1" ]]; then
   log "DNSMASQ ativado. Configurando..."
   
   print "Iniciando os contêineres (perfil 'dns' ativo)..."
 
-  docker-compose pull $DOCKER_SERVICES_TO_CHECK
+  docker-compose pull $SERVICES_HOSTS
 
   check_local_dns
 
@@ -821,7 +816,7 @@ local=/$DOMAIN/
 EOF
 
     # Adiciona as entradas de DNS para cada serviço
-    for service in $DOCKER_SERVICES_TO_CHECK; do
+    for service in $SERVICES_HOSTS; do
       if [[ "$service" == "dnsmasq" ]]; then continue; fi
       # Ajusta o nome do container para whoami-traefik
       container_name="$service"
@@ -849,13 +844,13 @@ EOF
       return 1
     fi
 
-    for service in $DOCKER_SERVICES_TO_CHECK.$DOMAIN ; do
+    for service in $SERVICES_HOSTS.$DOMAIN ; do
       docker exec -it dnsmasq sh -c "echo '$service' >> /etc/hosts"
       log "Adicionado: $service ao arquivo de configuração do /etc/hosts do dnsmasq."
     done
 
     # Verifica a resolução DNS para cada serviço
-    for service in $DOCKER_SERVICES_TO_CHECK; do
+    for service in $SERVICES_HOSTS; do
       if [[ "$service" == "dnsmasq" ]]; then continue; fi
       container_name="$service"
       if [[ "$service" == "whoami" ]]; then
@@ -890,7 +885,7 @@ else
   print "Aguardando alguns segundos para que os contêineres iniciem..."
   sleep 5 # Shorter wait if no DNS setup involved
 
-  for docker_service in $DOCKER_SERVICES_TO_CHECK; do
+  for docker_service in $SERVICES_HOSTS; do
     print "Verificando status do contêiner "$docker_service"..."
     # More robust check for container name (exact match, assuming service name is container name)
     if docker ps --filter "status=running" --format "{{.Names}}" | grep -Eq "^${docker_service}(_[0-9]+)?$"; then
