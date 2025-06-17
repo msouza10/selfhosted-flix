@@ -69,5 +69,5 @@ As credenciais geradas pelo script são salvas em `/opt/selfhosted-flix/.credent
 
 ## Licença
 
-Este projeto não possui licença definida. Adicione um arquivo `LICENSE` caso deseje especificar uma.
+Distribuído sob a licença [MIT](LICENSE).
 
