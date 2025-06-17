@@ -177,11 +177,11 @@ get_container_info_simple() {
 }
 
 # check dns and disable dns in router
-mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53 / && /LISTEN/ {print $NF}' | sed -E 's/users:\(\("([^"]+)",.*/\1/' | sort | uniq)
+mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53|5353 / && /LISTEN/ {print $NF}' | sed -E 's/users:\(\("([^"]+)",.*/\1/' | sort | uniq)
 check_local_dns() {
 
   if [[ ${#NAMES_DNSLOCAL[@]} -gt 1 ]]; then
-    war "Mais de um Serviço de DNS local encontrado, rodando na porta 53."
+    war "Mais de um Serviço de DNS local encontrado, rodando na porta 53 e/ou 5353"
     ask "Qual serviço de DNS local você deseja desabilitar (ex: dnsmasq)?"
     for name in "${NAMES_DNSLOCAL[@]}"; do
         print "-[$name]"
