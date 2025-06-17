@@ -43,7 +43,7 @@ fi
 
 log "Adicionando dados do qbittorrent ao banco de dados do prowlarr..."
 
-if [[ $qbittorrent_user == "admin" ]]; then
+if [[ "$qbittorrent_user" == "admin" ]]; then
     log "usuario default: $qbittorrent_user, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_user', '$qbittorrent_user') where Settings like '%qbittorrent_user%'"
 else
@@ -51,14 +51,14 @@ else
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_user', '$qbittorrent_user') where Settings like '%qbittorrent_user%'"
 fi
 
-if [[ -z $qbittorrent_pass_fixed ]]; then
+if [[ -n "$qbittorrent_pass_fixed" ]]; then
     log "senha default: $qbittorrent_pass_fixed, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_pass', '$qbittorrent_pass') where Settings like '%qbittorrent_pass%'"
 else
     war "A senha nao esta fixa por isso sera necessario configurar manualmente a senha no prowlarr"
 fi
 
-if [[ -z "$qbittorrent_ip" ]]; then
+if [[ -n "$qbittorrent_ip" ]]; then
     log "ip default: $qbittorrent_ip, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_ip', '$qbittorrent_ip') where Settings like '%qbittorrent_ip%'"
 else
@@ -68,7 +68,7 @@ fi
 
 log "dados do qbittorrent adicionados com sucesso!"
 
-if [[ -z "$prowlarr_user" ]]; then
+if [[ -n "$prowlarr_user" ]]; then
     log "usuario default: $prowlarr_user, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE Users SET Username = '$prowlarr_user' WHERE Id = 1"
 else
@@ -76,7 +76,7 @@ else
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE Users SET Username = '$prowlarr_user' WHERE Id = 1"
 fi
 
-if [[ -z "$prowlarr_pass" ]]; then
+if [[ -n "$prowlarr_pass" ]]; then
     log "senha default: $prowlarr_pass"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE Users SET Password = '$prowlarr_pass' WHERE Id = 1"
 else
@@ -84,7 +84,7 @@ else
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE Users SET Password = '$prowlarr_pass' WHERE Id = 1"
 fi  
 
-if [[ -z "$prowlarr_ip" ]]; then
+if [[ -n "$prowlarr_ip" ]]; then
     log "ip default: $prowlarr_ip, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'prowlarr_ip', '$prowlarr_ip') where Settings like '%prowlarr_ip%'"
 else
@@ -96,7 +96,7 @@ log "dados do prowlarr adicionados com sucesso!"
 
 log "Adicionando dados do radarr ao banco de dados do prowlarr..."
 
-if [[ -z "$radarr_api" ]]; then
+if [[ -n "$radarr_api" ]]; then
     log "api: $radarr_api, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'radarr_api', '$radarr_api') where Settings like '%radarr_api%'"
 else
@@ -104,7 +104,7 @@ else
     war "adicione a api manualmente no banco de dados do prowlarr"
 fi
 
-if [[ -z "$radarr_ip" ]]; then
+if [[ -n "$radarr_ip" ]]; then
     log "ip default: $radarr_ip, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'radarr_ip', '$radarr_ip') where Settings like '%radarr_ip%'"
 else
@@ -116,7 +116,7 @@ log "dados do radarr adicionados com sucesso!"
 
 log "Adicionando dados do sonarr ao banco de dados do prowlarr..."
 
-if [[ -z "$sonarr_api" ]]; then
+if [[ -n "$sonarr_api" ]]; then
     log "api: $sonarr_api, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'sonarr_api', '$sonarr_api') where Settings like '%sonarr_api%'"
 else
@@ -124,7 +124,7 @@ else
     war "adicione a api manualmente no banco de dados do prowlarr"
 fi
 
-if [[ -z "$sonarr_ip" ]]; then
+if [[ -n "$sonarr_ip" ]]; then
     log "ip: $sonarr_ip, para uso no banco de dados do prowlarr"
     sqlite3 $PWD/configs/prowlarr/prowlarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'sonarr_ip', '$sonarr_ip') where Settings like '%sonarr_ip%'"
 else

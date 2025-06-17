@@ -37,7 +37,7 @@ if [[ -f "$PWD/configs/radarr/radarr.db.backup" ]]; then
     fi
 else
     war "Backup do banco de dados template do radarr não encontrado: $PWD/configs/radarr.db.backup"
-  log "Criando backup do banco de dados template do radarr..."
+    log "Criando backup do banco de dados template do radarr..."
     cp "$PWD/configs/radarr/radarr.db" "$PWD/configs/radarr/radarr.db.backup"
 fi
 
@@ -45,7 +45,7 @@ log "Configurando o radarr..."
 
 log "Adicionando dados do qbittorrent ao banco de dados do radarr..."
 
-if [[ $qbittorrent_user == "admin" ]]; then
+if [[ "$qbittorrent_user" == "admin" ]]; then
     log "usuario default: $qbittorrent_user, para uso no banco de dados do radarr"
     sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_user', '$qbittorrent_user') where Settings like '%qbittorrent_user%'"
 else
@@ -53,7 +53,7 @@ else
     sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_user', '$qbittorrent_user') where Settings like '%qbittorrent_user%'"
 fi
 
-if [[ -z $qbittorrent_pass_fixed ]]; then
+if [[ -z "$qbittorrent_pass_fixed" ]]; then
     log "senha default: $qbittorrent_pass_fixed, para uso no banco de dados do radarr"
     sqlite3 $PWD/configs/radarr/radarr.db "UPDATE DownloadClients SET Settings = replace(Settings, 'qbittorrent_pass', '$qbittorrent_pass') where Settings like '%qbittorrent_pass%'"
 else
