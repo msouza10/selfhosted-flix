@@ -18,7 +18,11 @@ checking_qbittorrent_credentials() {
         log "Credenciais do qbittorrent configuradas com sucesso!"
     else
         err "Erro ao verificar as credenciais do qbittorrent!"
-        err "Mensagem: $(curl -vvv -s -i --header "Referer: http://$qbittorrent_ip:8080" --data "username=$qbittorrent_user&password=$qbittorrent_pass_fixed" http://$qbittorrent_ip:8080/api/v2/auth/login)"
+        err "Mensagem: $status"
+        err "IP: $qbittorrent_ip"
+        err "User: $qbittorrent_user"
+        err "Pass: $qbittorrent_pass_fixed"
+        err "Para testar manualmente: curl --header "Referer: http://$qbittorrent_ip:8080" --data "username=$qbittorrent_user&password=$qbittorrent_pass_fixed" http://$qbittorrent_ip:8080/api/v2/auth/login"
         exit 1
     fi
 }

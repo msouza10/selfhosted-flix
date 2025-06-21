@@ -2,6 +2,14 @@
 
 set -euo pipefail
 
+# root check
+if [[ $EUID -ne 0 ]]; then
+  echo "Inicie como root (sudo)."
+  exit 1
+else
+  echo "Iniciado como root."
+fi
+
 # color builder and color check
 if [[ -t 1 ]]; then
   RED="\033[1;31m"; BLUE="\033[1;34m"; YELLOW="\033[1;33m"; GREEN="\033[1;32m"; WHITE="\033[1;37m"
@@ -23,14 +31,6 @@ war() { printf "${YELLOW}[WARN] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a
 print() { printf "${WHITE}[ECHO] - $(date '+%H:%M:%S') - $* ${RESET} \n" | tee -a $logfile ; } 
 ask() { local msg; msg="${WHITE}[ASK] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rp "" input; } 
 ask_secret() { local msg; msg="${WHITE}[ASK-SECRET] - $(date '+%H:%M:%S') - $*${RESET}"; printf "%b\n" "$msg"; read -rsp "" input; printf "\n";}
-
-# root check
-if [[ $EUID -ne 0 ]]; then
-  err "Inicie como root (sudo)."
-  exit 1
-else
-  log "Iniciado como root."
-fi
 
 # check requirements
 REQUIREMENTS="requirements-pkgs.txt"
@@ -177,42 +177,68 @@ get_container_info_simple() {
 }
 
 # check dns and disable dns in router
-mapfile -t NAMES_DNSLOCAL < <(sudo ss -tulpn | awk '/:53|5353 / && /LISTEN/ {print $NF}' | sed -E 's/users:\(\("([^"]+)",.*/\1/' | sort | uniq)
 check_local_dns() {
-
-  if [[ ${#NAMES_DNSLOCAL[@]} -gt 1 ]]; then
-    war "Mais de um Serviço de DNS local encontrado, rodando na porta 53 e/ou 5353"
-    ask "Qual serviço de DNS local você deseja desabilitar (ex: dnsmasq)?"
-    for name in "${NAMES_DNSLOCAL[@]}"; do
-        print "-[$name]"
-            if [[ "$name" == "$input" ]]; then
-                log "Desabilitando DNS local..."
-                sudo systemctl stop $name
-                sudo systemctl disable $name
-                sudo systemctl unmask $name
-                log "DNS local desabilitado."
+    mapfile -t SERVICES_DNSLOCAL < <(lsof -nP -iUDP:53,5353 | grep ' \*:' | sort | uniq)
+    mapfile -t PID_DNSLOCAL < <(echo "${SERVICES_DNSLOCAL[*]}" | awk '{print $2}' | sort | uniq)
+    local NAMES_DNSLOCAL=()
+    
+    for pid in "${PID_DNSLOCAL[@]}"; do
+        if [[ -n "$pid" && "$pid" =~ ^[0-9]+$ ]]; then
+            unit_name=$(systemctl whoami "$pid" 2>/dev/null)
+            if [[ -n "$unit_name" ]]; then
+                # Extract service name from unit name (remove .service suffix if present)
+                service_name="${unit_name%.service}"
+                NAMES_DNSLOCAL+=("$service_name")
             fi
+        fi
     done
-  else
-    log "Apenas um Serviço de DNS local encontrado, rodando na porta 53."
-    ask "Deseja realmente desabilitar o DNS local [s/N]?"
-    if [[ "$input" =~ ^[sS]$ ]]; then
-      log "Desabilitando DNS local..."
-      if [[ "${NAMES_DNSLOCAL[0]}" == "systemd-resolve" ]]; then
-        log "systemd-resolve encontrado, desabilitando..."
-        sudo systemctl stop systemd-resolved
-        sudo systemctl disable systemd-resolved
-        sudo systemctl unmask systemd-resolved
-        log "systemd-resolved desabilitado."
-        return 0
-      fi
-      sudo systemctl stop $NAMES_DNSLOCAL
-      sudo systemctl disable $NAMES_DNSLOCAL
-      sudo systemctl unmask $NAMES_DNSLOCAL
-      log "DNS local desabilitado."
-      war "Sua maquina esta sem DNS local e sem acesso a internet, caso precise acessar verifique $NAMES_DNSLOCAL"
+
+    if [[ ${#NAMES_DNSLOCAL[@]} -eq 0 ]]; then
+        print "Nenhum serviço de DNS local encontrado."
+        return
     fi
-  fi
+
+    print "Serviços de DNS local encontrados:"
+    for name in "${NAMES_DNSLOCAL[@]}"; do
+        print "[$name]"
+    done
+
+    if [[ "${#NAMES_DNSLOCAL[@]}" -gt 1 ]]; then
+      ask "Deseja desabilitar todos os serviços de DNS local [s/N]?"
+      if [[ "$input" =~ ^[sS]$ ]]; then
+        log "Desabilitando todos os serviços de DNS local..."
+        for name in "${NAMES_DNSLOCAL[@]}"; do
+          systemctl stop "$name"
+          systemctl disable "$name"
+          systemctl unmask "$name"
+          log "DNS local desabilitado."
+        done
+      else
+          ask "Qual serviço de DNS local você deseja desabilitar (ex: dnsmasq)?"
+          if [[ "$input" == "${NAMES_DNSLOCAL[0]}" ]]; then
+            log "Desabilitando o serviço de DNS local..."
+            systemctl stop "$input"
+            systemctl disable "$input"
+            systemctl unmask "$input"
+            log "DNS local desabilitado."
+          else
+            err "Serviço de DNS local não encontrado: $input"
+            exit 1
+          fi
+      fi
+    else
+      ask "Deseja desabilitar o serviço de DNS local [s/N]?"
+      if [[ "$input" =~ ^[sS]$ ]]; then
+        log "Desabilitando o serviço de DNS local..."
+        systemctl stop "$name"
+        systemctl disable "$name"
+        systemctl unmask "$name"
+        log "DNS local desabilitado."
+      else
+        log "Serviço de DNS local não encontrado: $name"
+        exit 1
+      fi
+    fi
 }
 
 # CLI argument parsing
@@ -752,8 +778,7 @@ printf "\n${WHITE}Resumo das Configurações:
   Senha Traefik (cript): "$PASS_TRAEFIK"
   Ativar DNSMASQ      : "$DNSMASQ" (0=não, 1=sim, 2=hosts)
   Arquivo DNSMASQ Conf: "$DNSMASQ_DIR"
-  ${RESET}
-"
+  ${RESET}"
 
 # Handle confirmation based on mode
 if [[ "$SKIP_CONFIRM" == false ]]; then
@@ -815,10 +840,8 @@ local=/$DOMAIN/
 # Resoluções locais
 EOF
 
-    # Adiciona as entradas de DNS para cada serviço
     for service in $SERVICES_HOSTS; do
       if [[ "$service" == "dnsmasq" ]]; then continue; fi
-      # Ajusta o nome do container para whoami-traefik
       container_name="$service"
       if [[ "$service" == "whoami" ]]; then
         container_name="whoami-traefik"
@@ -831,7 +854,6 @@ EOF
     log "Arquivo de configuração do dnsmasq '$DNSMASQ_DIR' gerado."
     if ! docker-compose --profile dns up -d; then
       err "Erro ao iniciar o dnsmasq."
-      return 1
     fi
     log "Aguardando alguns segundos para que o dnsmasq inicie..."
     sleep 3
@@ -841,7 +863,6 @@ EOF
       log "Contêiner dnsmasq está em execução."
     else
       err "Contêiner dnsmasq não está em execução."
-      return 1
     fi
 
     for service in $SERVICES_HOSTS.$DOMAIN ; do
@@ -849,7 +870,6 @@ EOF
       log "Adicionado: $service ao arquivo de configuração do /etc/hosts do dnsmasq."
     done
 
-    # Verifica a resolução DNS para cada serviço
     for service in $SERVICES_HOSTS; do
       if [[ "$service" == "dnsmasq" ]]; then continue; fi
       container_name="$service"
@@ -863,7 +883,6 @@ EOF
         log "Serviço $service.$DOMAIN resolvido com sucesso para $service_ip."
       else
         war "Serviço $service.$DOMAIN não foi resolvido corretamente via $dnsmasq_ip (esperado: $service_ip)."
-        return 1
       fi
     done
     log "Resolução DNS verificada com sucesso."
@@ -876,7 +895,6 @@ EOF
     log "Configurado nameserver $dnsmasq_ip no /etc/resolv.conf"
   else
     err "Erro ao iniciar os contêineres."
-    return 1
   fi
 else
   log "DNSMASQ desativado. Iniciando os contêineres (sem perfil 'dns')..."
@@ -886,7 +904,7 @@ else
   sleep 5 # Shorter wait if no DNS setup involved
 
   for docker_service in $SERVICES_HOSTS; do
-    print "Verificando status do contêiner "$docker_service"..."
+    print "Verificando status do contêiner $docker_service"
     # More robust check for container name (exact match, assuming service name is container name)
     if docker ps --filter "status=running" --format "{{.Names}}" | grep -Eq "^${docker_service}(_[0-9]+)?$"; then
       print "Contêiner "$docker_service" está em execução."
@@ -934,8 +952,8 @@ else
         backup_dir="/opt/backup"
         export backup_dir
         for backup_path in $SERVICES_HOSTS; do
-            if [[ ! -d $backup_dir/$backup_path ]]; then
-                if mkdir -p $backup_dir/$backup_path; then
+            if [[ ! -d "$backup_dir/$backup_path" ]]; then
+                if mkdir -p "$backup_dir/$backup_path"; then
                     log "Pasta de backup criada: $backup_dir/$backup_path"
                 else
                     err "Erro ao criar a pasta de backup: $backup_dir/$backup_path"
@@ -945,12 +963,13 @@ else
                 log "Pasta de backup já existe: $backup_dir/$backup_path"
             fi
         done
-        source setups/args.sh
-        source setups/heimdall.sh
-        source setups/qbittorrent.sh
-        source setups/radarr.sh
-        source setups/sonarr.sh
-        source setups/prowlarr.sh
+
+        source "$PWD/setups/args.sh"
+        source "$PWD/setups/heimdall.sh"
+        source "$PWD/setups/qbittorrent.sh"
+        source "$PWD/setups/radarr.sh"
+        source "$PWD/setups/sonarr.sh"
+        source "$PWD/setups/prowlarr.sh"
     else
         log "os serviços foram iniciados com sucesso e estão em execução."
         war "o qbittorrent criara uma senha randomica, para ter acesso a ela veja nos logs com co comando 'docker logs qbittorrent' ou anota a senha abaixo"
@@ -984,5 +1003,3 @@ EOF
 save_credentials
 
 print "${GREEN}Instalação concluída com sucesso!${RESET}\n"
-
-exit 0
